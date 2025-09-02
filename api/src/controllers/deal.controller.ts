@@ -331,11 +331,18 @@ export class DealController {
         throw new NotFoundError('Deal');
       }
 
-      // Soft delete
-      deal.isDeleted = true;
-      deal.deletedAt = new Date();
-      deal.deletedBy = new Types.ObjectId(userId);
-      await deal.save();
+      // Soft delete using findOneAndUpdate to avoid pre-save hooks
+      await Deal.findOneAndUpdate(
+        { _id: id },
+        {
+          $set: {
+            isDeleted: true,
+            deletedAt: new Date(),
+            deletedBy: new Types.ObjectId(userId)
+          }
+        },
+        { new: true }
+      );
 
       const response: ApiResponse = {
         success: true,

@@ -4,21 +4,19 @@ import Button from '../../../components/ui/Button';
 
 const RelatedDealsCard = ({ deals }) => {
   const totalValue = deals.reduce((sum, deal) => sum + deal.value, 0);
-  const wonDeals = deals.filter(deal => deal.stage === 'won');
-  const activeDeals = deals.filter(deal => !['won', 'lost'].includes(deal.stage));
+  const wonDeals = deals.filter(deal => deal.stage === 'closed-won');
+  const activeDeals = deals.filter(deal => !['closed-won', 'closed-lost'].includes(deal.stage));
 
   const getStageColor = (stage) => {
     switch (stage) {
-      case 'won':
-        return 'bg-success/10 text-success';
-      case 'lost':
-        return 'bg-error/10 text-error';
-      case 'proposal':
-        return 'bg-warning/10 text-warning';
-      case 'negotiation':
-        return 'bg-accent/10 text-accent';
-      default:
-        return 'bg-muted text-muted-foreground';
+      case 'Onboarding':
+        return 'bg-blue-100 text-blue-800';
+      case 'Implementation':
+        return 'bg-amber-100 text-amber-800';
+      case 'Go-Live':
+        return 'bg-red-100 text-red-800';
+      case 'Success':
+        return 'bg-green-100 text-green-800';
     }
   };
 

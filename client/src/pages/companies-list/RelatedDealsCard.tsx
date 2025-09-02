@@ -2,13 +2,57 @@ import React from 'react';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 
-const RelatedDealsCard = ({ deals }) => {
-  const totalValue = deals.reduce((sum, deal) => sum + deal.value, 0);
-  const wonDeals = deals.filter(deal => deal.stage === 'won');
-  const activeDeals = deals.filter(deal => !['won', 'lost'].includes(deal.stage));
+interface Deal {
+  id: string;
+  name: string;
+  value: number;
+  stageName: string;
+  closeDate: string;
+  description?: string;
+  probability?: number;
+}
 
-  const getStageColor = (stage) => {
+interface RelatedDealsCardProps {
+  deals: Deal[];
+  onAddDeal?: () => void;
+  onEditDeal?: (deal: Deal) => void;
+  onDeleteDeal?: (dealId: string) => void;
+}
+
+const RelatedDealsCard = ({ deals, onAddDeal, onEditDeal, onDeleteDeal }: RelatedDealsCardProps) => {
+
+  const totalValue = deals.reduce((sum: number, deal: Deal) => sum + deal.value, 0);
+  const wonDeals = deals.filter((deal: Deal) => deal.stageName === 'won');
+  const activeDeals = deals.filter((deal: Deal) => !['won', 'lost'].includes(deal.stageName));
+
+  const handleCreateDeal = () => {
+    if (onAddDeal) {
+      onAddDeal();
+    }
+  };
+
+  const handleEditDeal = (deal: Deal) => {
+    if (onEditDeal) {
+      onEditDeal(deal);
+    }
+  };
+
+  const handleDeleteDeal = (dealId: string) => {
+    if (onDeleteDeal) {
+      onDeleteDeal(dealId);
+    }
+  };
+
+  const getStageColor = (stage: string) => {
     switch (stage) {
+      case 'Onboarding':
+        return 'bg-blue-100 text-blue-800';
+      case 'Implementation':
+        return 'bg-amber-100 text-amber-800';
+      case 'Go-Live':
+        return 'bg-red-100 text-red-800';
+      case 'Success':
+        return 'bg-green-100 text-green-800';
       case 'won':
         return 'bg-success/10 text-success';
       case 'lost':
@@ -18,11 +62,11 @@ const RelatedDealsCard = ({ deals }) => {
       case 'negotiation':
         return 'bg-accent/10 text-accent';
       default:
-        return 'bg-muted text-muted-foreground';
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const formatCurrency = (amount) => {
+  const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -36,7 +80,13 @@ const RelatedDealsCard = ({ deals }) => {
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-medium text-foreground">Related Deals</h3>
-          <Button variant="outline" size="sm" iconName="Plus" iconPosition="left">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            iconName="Plus" 
+            iconPosition="left"
+            onClick={handleCreateDeal}
+          >
             New Deal
           </Button>
         </div>
@@ -71,8 +121,8 @@ const RelatedDealsCard = ({ deals }) => {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-foreground truncate">{deal.name}</p>
                   <div className="flex items-center space-x-2 mt-1">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStageColor(deal.stage)}`}>
-                      {deal.stage}
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStageColor(deal.stageName)}`}>
+                      {deal.stageName}
                     </span>
                     <span className="text-sm text-muted-foreground">
                       {formatCurrency(deal.value)}
@@ -84,7 +134,25 @@ const RelatedDealsCard = ({ deals }) => {
                     <p className="text-xs text-muted-foreground">Close Date</p>
                     <p className="text-sm font-medium text-foreground">{deal.closeDate}</p>
                   </div>
-                  <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
+                  <div className="flex items-center space-x-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditDeal(deal)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Icon name="Edit" size={14} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteDeal(deal.id)}
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                    >
+                      <Icon name="Trash" size={14} />
+                    </Button>
+                    <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
+                  </div>
                 </div>
               </div>
             ))}
@@ -100,12 +168,20 @@ const RelatedDealsCard = ({ deals }) => {
           <div className="text-center py-8">
             <Icon name="DollarSign" size={48} className="mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground mb-3">No deals found</p>
-            <Button variant="outline" size="sm" iconName="Plus" iconPosition="left">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              iconName="Plus" 
+              iconPosition="left"
+              onClick={handleCreateDeal}
+            >
               Create First Deal
             </Button>
           </div>
         )}
       </div>
+
+
     </div>
   );
 };

@@ -29,6 +29,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     Permission.ACTIVITY_READ,
     Permission.ACTIVITY_UPDATE,
     Permission.ACTIVITY_DELETE,
+
     Permission.REPORT_READ,
     Permission.REPORT_CREATE,
     Permission.ADMIN_ACCESS,
@@ -60,6 +61,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     Permission.ACTIVITY_READ,
     Permission.ACTIVITY_UPDATE,
     Permission.ACTIVITY_DELETE,
+
     Permission.REPORT_READ,
     Permission.REPORT_CREATE,
   ],
@@ -81,6 +83,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     Permission.ACTIVITY_READ,
     Permission.ACTIVITY_UPDATE,
     Permission.ACTIVITY_DELETE,
+
     Permission.REPORT_READ,
   ],
 };
@@ -117,6 +120,8 @@ export const PERMISSION_DESCRIPTIONS: Record<Permission, string> = {
   [Permission.ACTIVITY_READ]: 'View activities',
   [Permission.ACTIVITY_UPDATE]: 'Update activities',
   [Permission.ACTIVITY_DELETE]: 'Delete activities',
+  
+
   
   [Permission.REPORT_READ]: 'View reports and dashboards',
   [Permission.REPORT_CREATE]: 'Create custom reports',

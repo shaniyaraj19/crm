@@ -20,6 +20,36 @@ const ContactDetails = () => {
 
   // Load contact data from router state or API
 
+  // Notes state
+  const [notes, setNotes] = useState([
+    {
+      id: 1,
+      content: `Initial contact made through LinkedIn. Client is looking for a comprehensive CRM solution to manage their growing sales team.\n\nKey requirements:\n- Multi-user access\n- Integration with existing tools\n- Mobile accessibility\n- Reporting capabilities`,
+      timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      user: 'John Smith',
+      type: 'general'
+    },
+    {
+      id: 2,
+      content: 'Follow-up call scheduled for next Tuesday at 2 PM EST. Client requested additional information about pricing tiers and implementation timeline.',
+      timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      user: 'Sarah Johnson',
+      type: 'general'
+    }
+  ]);
+
+  // Function to add new note
+  const handleAddNote = (newNote: any) => {
+    const noteWithId = {
+      ...newNote,
+      id: Date.now(),
+      timestamp: new Date(),
+      user: "Current User" // You can get this from user context
+    };
+    setNotes(prevNotes => [noteWithId, ...prevNotes]);
+    console.log('New note added:', noteWithId);
+  };
+
   // Mock related deals
   const mockDeals = [
     {
@@ -212,13 +242,13 @@ const ContactDetails = () => {
                 />
                 
                 {/* Contact Tabs */}
-                <ContactTabs contact={contact} />
+                <ContactTabs contact={contact} notes={notes} onAddNote={handleAddNote} />
               </div>
 
               {/* Right Column - Sidebar */}
               <div className="lg:col-span-4 space-y-6">
                 {/* Quick Actions Panel */}
-                <QuickActionsPanel contact={contact} />
+                <QuickActionsPanel contact={contact} onAddNote={handleAddNote} />
                 
                 {/* Related Deals Card */}
                 <RelatedDealsCard deals={mockDeals} />

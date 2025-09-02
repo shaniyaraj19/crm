@@ -1,9 +1,14 @@
 import React from 'react';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
+import { Activity } from '../../services/activities';
 
-const RecentActivityCard = ({ activities }) => {
-  const getActivityIcon = (type) => {
+interface RecentActivityCardProps {
+  activities: Activity[];
+}
+
+const RecentActivityCard = ({ activities }: RecentActivityCardProps) => {
+  const getActivityIcon = (type: Activity['type']) => {
     switch (type) {
       case 'call':
         return 'Phone';
@@ -22,7 +27,7 @@ const RecentActivityCard = ({ activities }) => {
     }
   };
 
-  const getActivityColor = (type) => {
+  const getActivityColor = (type: Activity['type']) => {
     switch (type) {
       case 'call':
         return 'text-blue-600';
@@ -41,10 +46,10 @@ const RecentActivityCard = ({ activities }) => {
     }
   };
 
-  const formatTimeAgo = (timestamp) => {
+  const formatTimeAgo = (timestamp: string) => {
     const now = new Date();
     const activityTime = new Date(timestamp);
-    const diffInMinutes = Math.floor((now - activityTime) / (1000 * 60));
+    const diffInMinutes = Math.floor((now.getTime() - activityTime.getTime()) / (1000 * 60));
     
     if (diffInMinutes < 60) {
       return `${diffInMinutes}m ago`;
@@ -69,7 +74,7 @@ const RecentActivityCard = ({ activities }) => {
         {activities.length > 0 ? (
           <div className="space-y-4">
             {activities.slice(0, 5).map((activity) => (
-              <div key={activity.id} className="flex items-start space-x-3">
+              <div key={activity._id} className="flex items-start space-x-3">
                 <div className={`flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center ${getActivityColor(activity.type)}`}>
                   <Icon name={getActivityIcon(activity.type)} size={14} />
                 </div>
@@ -78,12 +83,18 @@ const RecentActivityCard = ({ activities }) => {
                   <p className="text-sm text-muted-foreground mt-1">{activity.description}</p>
                   <div className="flex items-center space-x-2 mt-2">
                     <span className="text-xs text-muted-foreground">
-                      {formatTimeAgo(activity.timestamp)}
+                      {formatTimeAgo(activity.createdAt || '')}
                     </span>
-                    {activity.user && (
+                    {activity.createdBy && (
                       <>
                         <span className="text-xs text-muted-foreground">•</span>
-                        <span className="text-xs text-muted-foreground">by {activity.user}</span>
+                        <span className="text-xs text-muted-foreground">
+                          by {typeof activity.createdBy === 'object' && activity.createdBy?.firstName 
+                            ? `${activity.createdBy.firstName} ${activity.createdBy.lastName}` 
+                            : typeof activity.createdBy === 'string' 
+                            ? activity.createdBy 
+                            : 'Unknown User'}
+                        </span>
                       </>
                     )}
                   </div>

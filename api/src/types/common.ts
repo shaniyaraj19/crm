@@ -58,6 +58,8 @@ export enum Permission {
   ACTIVITY_UPDATE = 'activity:update',
   ACTIVITY_DELETE = 'activity:delete',
   
+
+  
   // Report permissions
   REPORT_READ = 'report:read',
   REPORT_CREATE = 'report:create',
@@ -180,18 +182,7 @@ export interface AuthenticatedRequest extends Request {
   user?: JWTPayload;
 }
 
-// File upload types
-export interface FileUpload {
-  fieldname: string;
-  originalname: string;
-  encoding: string;
-  mimetype: string;
-  size: number;
-  destination: string;
-  filename: string;
-  path: string;
-  buffer: Buffer;
-}
+
 
 // Email template types
 export interface EmailTemplate {

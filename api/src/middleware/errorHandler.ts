@@ -68,20 +68,7 @@ export const errorHandler = (
     message = 'Token expired';
     code = ERROR_CODES.AUTHENTICATION_ERROR;
   }
-  // Handle multer file upload errors
-  else if (error.name === 'MulterError') {
-    statusCode = HTTP_STATUS.BAD_REQUEST;
-    code = ERROR_CODES.FILE_TOO_LARGE;
-    
-    const multerError = error as any;
-    if (multerError.code === 'LIMIT_FILE_SIZE') {
-      message = 'File too large';
-    } else if (multerError.code === 'LIMIT_FILE_COUNT') {
-      message = 'Too many files';
-    } else {
-      message = 'File upload error';
-    }
-  }
+
 
   // Log error
   const errorLog = {

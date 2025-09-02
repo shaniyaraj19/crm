@@ -9,7 +9,7 @@ import CompanySlideForm from "./CompanySlideForm";
 import { api } from "../../services/api";
 import CompanyFieldCustomizer from "./CompanyFieldCustomizer";
 import { useFields } from "../../contexts/FieldsContext";
-import { getCompanies } from "src/services/conpany";
+import { getCompanies, updateCompany } from "src/services/conpany";
 import BulkActionsBar from "../contacts-list/components/BulkActionsBar";
 
 interface Company {
@@ -19,7 +19,7 @@ interface Company {
   phone: string;
   website: string;
   email?: string;
-  description?: string; 
+  description?: string;
   address?: {
     street?: string;
     city?: string;
@@ -47,12 +47,6 @@ const CompaniesPage: React.FC = () => {
   const navigate = useNavigate();
   const { fields } = useFields();
   const [companies, setCompanies] = useState<any[]>([]);
-  
-  console.log("🏢 CompaniesPage component rendered");
-  // console.log("🏢 Fields:", fields);
-  // console.log("🏢 Companies:", companies);
-
-  // console.log("🏢 Companies state:", companies, companies);
 
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
   const [openDropdown, setOpenDropdown] = useState<number | null>(null);
@@ -70,7 +64,11 @@ const CompaniesPage: React.FC = () => {
   const [editValue, setEditValue] = useState("");
 
   // Inline editing functions
-  const handleStartEdit = (companyId: string, fieldName: string, currentValue: string) => {
+  const handleStartEdit = (
+    companyId: string,
+    fieldName: string,
+    currentValue: string
+  ) => {
     setEditingCell({ companyId, fieldName });
     setEditValue(currentValue);
   };
@@ -80,7 +78,7 @@ const CompaniesPage: React.FC = () => {
       // Update the company data
       const updatedCompany = { ...company };
       if (fields?.companies) {
-        const field = fields.companies.find(f => f.name === fieldName);
+        const field = fields.companies.find((f) => f.name === fieldName);
         if (field?.isCustom) {
           // Update custom field
           if (!updatedCompany.customFields) updatedCompany.customFields = {};
@@ -91,15 +89,39 @@ const CompaniesPage: React.FC = () => {
         }
       }
 
-      // Call API to update the company
-      // For now, just update local state
-      setCompanies(prev => 
-        prev.map(c => c._id === company._id ? updatedCompany : c)
+      // Update local state immediately for better UX
+      setCompanies((prev) =>
+        prev.map((c) => (c._id === company._id ? updatedCompany : c))
       );
 
-      console.log(`🏢 Updated ${fieldName} for company ${company.name}:`, editValue);
+      // Call API to update the company in the database
+      try {
+        const field = fields?.companies?.find((f) => f.name === fieldName);
+
+        // Prepare update data based on field type
+        let updateData: any = {};
+        if (field?.isCustom) {
+          // For custom fields, update the customFields object
+          updateData.customFields = { [fieldName]: editValue };
+        } else {
+          // For standard fields, update directly
+          updateData[fieldName] = editValue;
+        }
+
+        // Call the API to update the company
+        const response = await updateCompany(company._id, updateData);
+      } catch (apiError: any) {
+        // Revert local state if API call fails
+        setCompanies((prev) =>
+          prev.map((c) => (c._id === company._id ? company : c))
+        );
+
+        // Show error to user
+        alert(`Failed to save changes: ${apiError.message || "Unknown error"}`);
+        return;
+      }
     } catch (error) {
-      console.error('Error updating field:', error);
+      alert("Failed to update field");
     } finally {
       setEditingCell(null);
       setEditValue("");
@@ -138,104 +160,12 @@ const CompaniesPage: React.FC = () => {
     try {
       const res = await getCompanies();
       setCompanies((res as any).companies || []);
-      console.log("🏢 API Response:", res);
-      console.log("🏢 Companies data:", (res as any).companies);
-      console.log("🏢 Fields configuration:", fields);
-
-      // Debug: Check if fields are loaded
-      if (fields?.companies) {
-        console.log("🏢 Fields.companies:", fields.companies);
-        console.log(
-          "🏢 Visible fields:",
-          fields.companies.filter((f) => f.visible)
-        );
-      } else {
-        console.log(
-          "🏢 Fields not loaded yet or fields.companies is undefined"
-        );
-      }
-    } catch (err: any) {
-      console.error(
-        "Error fetching companies:",
-        err.response?.data || err.message
-      );
-    }
+    } catch (err: any) {}
   };
 
   useEffect(() => {
     fetchCompanies();
   }, []);
-
-  // Debug: Monitor fields changes
-  useEffect(() => {
-    console.log("🏢 Fields changed:", fields);
-    if (fields?.companies) {
-      console.log("🏢 Companies fields loaded:", fields.companies);
-      console.log(
-        "🏢 Visible companies fields:",
-        fields.companies.filter((f) => f.visible)
-      );
-      console.log(
-        "🏢 Custom companies fields:",
-        fields.companies.filter((f) => f.isCustom && f.visible)
-      );
-      
-      // Debug: Check if custom fields exist in the fields array
-      const customFields = fields.companies.filter((f) => f.isCustom && f.visible);
-      const allCustomFields = fields.companies.filter((f) => f.isCustom);
-      
-      console.log(`🏢 All custom fields (${allCustomFields.length}):`, allCustomFields.map(f => ({
-        name: f.name,
-        id: f.id,
-        visible: f.visible,
-        isCustom: f.isCustom
-      })));
-      
-      console.log(`🏢 Visible custom fields (${customFields.length}):`, customFields.map(f => ({
-        name: f.name,
-        id: f.id,
-        visible: f.visible,
-        isCustom: f.isCustom
-      })));
-      
-      customFields.forEach(field => {
-        console.log(`🏢 Custom field in context:`, {
-          name: field.name,
-          id: field.id,
-          label: field.label,
-          isCustom: field.isCustom,
-          visible: field.visible
-        });
-      });
-    }
-  }, [fields]);
-
-  // Debug: Monitor companies data
-  useEffect(() => {
-    console.log("🏢 Companies data changed:", companies);
-    if (companies.length > 0) {
-      console.log("🏢 First company customFields:", companies[0].customFields);
-      
-      // Debug: Compare fields context with company custom fields
-      if (fields?.companies && companies[0].customFields) {
-        const customFieldsInContext = fields.companies.filter(f => f.isCustom && f.visible);
-        const customFieldsInCompany = Object.keys(companies[0].customFields);
-        
-        console.log("🏢 Custom fields in context:", customFieldsInContext.map(f => f.name));
-        console.log("🏢 Custom fields in company:", customFieldsInCompany);
-        
-        // Check for mismatches
-        customFieldsInContext.forEach(contextField => {
-          const hasValue = companies[0].customFields[contextField.name];
-          console.log(`🏢 Field ${contextField.name}:`, {
-            inContext: true,
-            inCompany: !!hasValue,
-            value: hasValue || 'NOT FOUND'
-          });
-        });
-      }
-    }
-  }, [companies, fields]);
 
   const handleSingleFilterChange = (newFilters: CompanyFilters) => {
     setFilters(newFilters);
@@ -246,36 +176,21 @@ const CompaniesPage: React.FC = () => {
 
   const handleSelectCompany = (company: any) => {
     const companyId = company._id || company.id;
-    console.log("🔍 Selecting company:", {
-      companyId,
-      companyName: company.name,
-      currentSelection: selectedCompanies,
-      willToggle: selectedCompanies.includes(companyId) ? "remove" : "add",
-    });
 
     setSelectedCompanies((prev) => {
       const newSelection = prev.includes(companyId)
         ? prev.filter((cid) => cid !== companyId)
         : [...prev, companyId];
 
-      console.log("🔍 New selection:", newSelection);
       return newSelection;
     });
   };
 
   const handleSelectAll = () => {
-    console.log("🔍 Select All clicked:", {
-      currentSelectionCount: selectedCompanies.length,
-      totalCompanies: companies.length,
-      willSelectAll: selectedCompanies.length !== companies.length,
-    });
-
     if (selectedCompanies.length === companies.length) {
-      // console.log("🔍 Deselecting all companies");
       setSelectedCompanies([]);
     } else {
       const allCompanyIds = companies.map((c) => c._id || c.id);
-      console.log("🔍 Selecting all companies:", allCompanyIds);
       setSelectedCompanies(allCompanyIds);
     }
   };
@@ -295,14 +210,11 @@ const CompaniesPage: React.FC = () => {
         setError(response.message || "Failed to create company");
       }
     } catch (err) {
-      console.error("Error creating company:", err);
       setError("Failed to create company. Please try again.");
     }
   };
 
   const handleEditCompany = (company: any) => {
-    console.log("🔧 Edit button clicked for company:", company);
-    console.log("🔧 Company data structure:", JSON.stringify(company, null, 2));
     setEditingCompany(company);
     setFormMode("edit");
     setIsSlideFormOpen(true);
@@ -311,7 +223,6 @@ const CompaniesPage: React.FC = () => {
   const handleSaveCompany = async (companyData: Company) => {
     try {
       if (formMode === "edit" && companyData.id) {
-        console.log("✏️ Updating existing company...");
         const response = await api.put<any>(
           `/companies/${companyData.id}`,
           companyData
@@ -328,7 +239,6 @@ const CompaniesPage: React.FC = () => {
           setError(response.message || "Failed to update company");
         }
       } else {
-        console.log("➕ Creating new company...");
         const response = await api.post<any>("/companies", companyData);
         if (response.success) {
           setCompanies((prev) => [...prev, normalizeCompany(response.data)]);
@@ -339,7 +249,6 @@ const CompaniesPage: React.FC = () => {
         }
       }
     } catch (err) {
-      console.error("Error saving company:", err);
       setError("Failed to save company. Please try again.");
     } finally {
       fetchCompanies();
@@ -363,9 +272,7 @@ const CompaniesPage: React.FC = () => {
           prev.filter((id) => id !== (company._id || company.id))
         );
 
-        console.log("Company deleted:", company);
-      } catch (err) {
-        console.error("Delete failed:", err);
+        // Company deleted successfully
       } finally {
         // Close any open dropdowns
         setOpenDropdown(null);
@@ -376,27 +283,14 @@ const CompaniesPage: React.FC = () => {
 
   // Bulk Actions Handlers
   const handleBulkExport = () => {
-    console.log("📊 Exporting companies:", selectedCompanies);
     alert(`Exporting ${selectedCompanies.length} companies...`);
   };
 
   const handleBulkAssignOwner = (ownerId: string) => {
-    console.log(
-      "👤 Assigning owner to companies:",
-      selectedCompanies,
-      "Owner:",
-      ownerId
-    );
     alert(`Assigning owner to ${selectedCompanies.length} companies...`);
   };
 
   const handleBulkAddTags = (tags: string[]) => {
-    console.log(
-      "🏷️ Adding tags to companies:",
-      selectedCompanies,
-      "Tags:",
-      tags
-    );
     alert(`Adding tags to ${selectedCompanies.length} companies...`);
   };
 
@@ -418,10 +312,9 @@ const CompaniesPage: React.FC = () => {
         // Clear selection
         setSelectedCompanies([]);
 
-        console.log("Bulk delete completed");
+        // Bulk delete completed
         fetchCompanies();
       } catch (err) {
-        console.error("Bulk delete failed:", err);
         setError("Failed to delete some companies. Please try again.");
       }
     }
@@ -454,13 +347,6 @@ const CompaniesPage: React.FC = () => {
       const updatedCompany = { ...company };
       updatedCompany[editingCell.fieldName] = editValue;
 
-      console.log("💾 Saving inline edit:", {
-        companyId: editingCell.companyId,
-        fieldName: editingCell.fieldName,
-        oldValue: company[editingCell.fieldName],
-        newValue: editValue,
-      });
-
       // Make API call to update the company
       const response = await api.put(
         `/companies/${editingCell.companyId}`,
@@ -477,13 +363,11 @@ const CompaniesPage: React.FC = () => {
           )
         );
 
-        console.log("✅ Inline edit saved successfully");
+        // Inline edit saved successfully
       } else {
-        console.error("❌ Failed to save inline edit:", response.message);
         setError("Failed to save changes. Please try again.");
       }
     } catch (err) {
-      console.error("❌ Error saving inline edit:", err);
       setError("Failed to save changes. Please try again.");
     } finally {
       // Clear editing state
@@ -751,48 +635,10 @@ const CompaniesPage: React.FC = () => {
                         fields.companies
                           .filter((f) => f.visible)
                           .map((field) => {
-                            // Debug: Log all fields being processed
-                            console.log(`🏢 Processing field:`, {
-                              fieldName: field.name,
-                              fieldId: field.id,
-                              isCustom: field.isCustom,
-                              visible: field.visible,
-                              companyCustomFields: company.customFields,
-                              companyCustomFieldsKeys: company.customFields ? Object.keys(company.customFields) : [],
-                              companyId: company._id,
-                              companyName: company.name
-                            });
-                           
-                            const value = field.isCustom 
-                              ? (company.customFields?.[field.name] || "")
-                              : (company[field.name] || "");
-                          
-                            // Debug logging for custom fields
-                            if (field.isCustom) {
-                              console.log(`🏢 Custom field ${field.name}:`, {
-                                fieldName: field.name,
-                                fieldId: field.id,
-                                companyCustomFields: company.customFields,
-                                companyCustomFieldsKeys: company.customFields ? Object.keys(company.customFields) : [],
-                                directAccess: company.customFields?.[field.name],
-                                value: value,
-                                companyId: company._id,
-                                companyName: company.name,
-                                // Debug the exact access pattern
-                                accessPattern: `company.customFields['${field.name}']`,
-                                result: company.customFields?.[field.name]
-                              });
-                            }
-                            
-                            // Debug: Log the final field value calculation
-                            console.log(`🏢 Final field value for ${field.name}:`, {
-                              fieldName: field.name,
-                              isCustom: field.isCustom,
-                              customFieldValue: field.isCustom ? company.customFields?.[field.name] : 'N/A',
-                              standardFieldValue: !field.isCustom ? company[field.name] : 'N/A',
-                              finalValue: value
-                            });
-                            
+                            const value = field.isCustom
+                              ? company.customFields?.[field.name] || ""
+                              : company[field.name] || "";
+
                             return (
                               <td key={field.id} className="px-4 py-2">
                                 {field.name === "name" ? (
@@ -809,9 +655,7 @@ const CompaniesPage: React.FC = () => {
                                     {value || ""}
                                   </button>
                                 ) : (
-                                  <div className="px-2 py-1">
-                                    {value || ""}
-                                  </div>
+                                  <div className="px-2 py-1">{value || ""}</div>
                                 )}
                               </td>
                             );
@@ -905,269 +749,242 @@ const CompaniesPage: React.FC = () => {
             </div>
           )}
 
-          
           {/* --- Grid View (Excel Style) --- */}
           {view === "grid" && (
-  <div className="overflow-x-auto shadow-md h-full rounded-lg border border-gray-200">
-    <table className="min-w-full table-fixed border-collapse">
-      {/* Header */}
-      <thead className="bg-gray-100 text-gray-700 text-sm font-medium border-b border-gray-200">
-        <tr>
-          {/* Checkbox column */}
-          <th className="w-12 text-center border-r border-gray-200 py-2">
-            <input
-              type="checkbox"
-              className="rounded border-border text-primary focus:ring-primary"
-              checked={isAllSelected}
-              ref={(el) => {
-                if (el) el.indeterminate = isIndeterminate;
-              }}
-              onChange={handleSelectAll}
-            />
-          </th>
+            <div className="overflow-x-auto shadow-md h-full rounded-lg border border-gray-200">
+              <table className="min-w-full table-fixed border-collapse">
+                {/* Header */}
+                <thead className="bg-gray-100 text-gray-700 text-sm font-medium border-b border-gray-200">
+                  <tr>
+                    {/* Checkbox column */}
+                    <th className="w-12 text-center border-r border-gray-200 py-2">
+                      <input
+                        type="checkbox"
+                        className="rounded border-border text-primary focus:ring-primary"
+                        checked={isAllSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = isIndeterminate;
+                        }}
+                        onChange={handleSelectAll}
+                      />
+                    </th>
 
-          {/* Dynamic / Default Fields */}
-          {fields?.companies ? (
-            fields.companies
-              .filter((f) => f.visible)
-              .map((field) => (
-                <th
-                  key={field.id}
-                  className="px-3 py-2 border-r border-gray-200 text-left"
-                  style={{ minWidth: "180px" }}
-                >
-                  {field.label}
-                </th>
-              ))
-          ) : (
-            <>
-              <th className="px-3 py-2 border-r border-gray-200 text-left min-w-[180px]">
-                Company Name
-              </th>
-              <th className="px-3 py-2 border-r border-gray-200 text-left min-w-[180px]">
-                Phone
-              </th>
-              <th className="px-3 py-2 border-r border-gray-200 text-left min-w-[180px]">
-                Website
-              </th>
-              <th className="px-3 py-2 border-r border-gray-200 text-left min-w-[180px]">
-                Email
-              </th>
-            </>
-          )}
+                    {/* Dynamic / Default Fields */}
+                    {fields?.companies ? (
+                      fields.companies
+                        .filter((f) => f.visible)
+                        .map((field) => (
+                          <th
+                            key={field.id}
+                            className="px-3 py-2 border-r border-gray-200 text-left"
+                            style={{ minWidth: "180px" }}
+                          >
+                            {field.label}
+                          </th>
+                        ))
+                    ) : (
+                      <>
+                        <th className="px-3 py-2 border-r border-gray-200 text-left min-w-[180px]">
+                          Company Name
+                        </th>
+                        <th className="px-3 py-2 border-r border-gray-200 text-left min-w-[180px]">
+                          Phone
+                        </th>
+                        <th className="px-3 py-2 border-r border-gray-200 text-left min-w-[180px]">
+                          Website
+                        </th>
+                        <th className="px-3 py-2 border-r border-gray-200 text-left min-w-[180px]">
+                          Email
+                        </th>
+                      </>
+                    )}
 
-          {/* Actions */}
-          <th className="w-[150px] px-3 py-2 text-center">
-            <Button
-              onClick={() => setIsFieldCustomizerOpen(true)}
-              className="flex items-center space-x-1.5 bg-green-600 hover:bg-green-700 text-white px-2 py-1 h-7 text-xs"
-            >
-              <Icon name="Plus" size={12} />
-              <span>Create Field</span>
-            </Button>
-          </th>
-        </tr>
-      </thead>
+                    {/* Actions */}
+                    <th className="w-[150px] px-3 py-2 text-center">
+                      <Button
+                        onClick={() => setIsFieldCustomizerOpen(true)}
+                        className="flex items-center space-x-1.5 bg-green-600 hover:bg-green-700 text-white px-2 py-1 h-7 text-xs"
+                      >
+                        <Icon name="Plus" size={12} />
+                        <span>Create Field</span>
+                      </Button>
+                    </th>
+                  </tr>
+                </thead>
 
-      {/* Body */}
-      <tbody className="text-sm">
-        {companies?.map((company, idx) => (
-          <tr
-            key={company._id || company.id}
-            className="border-b border-gray-200 hover:bg-gray-50"
-            onMouseEnter={() => setHoveredRow(idx)}
-            onMouseLeave={() => setHoveredRow(null)}
-          >
-            {/* Checkbox */}
-            <td className="w-12 text-center border-r border-gray-200">
-              <input
-                type="checkbox"
-                checked={selectedCompanies.includes(company._id || company.id)}
-                onChange={() => handleSelectCompany(company)}
-                className="rounded border-border text-primary focus:ring-primary"
-              />
-            </td>
-
-            {/* Dynamic Fields */}
-            {fields?.companies ? (
-              fields.companies
-                .filter((f) => f.visible)
-                .map((field) => {
-                  // Debug: Log all fields being processed
-                  console.log(`🏢 Processing field:`, {
-                    fieldName: field.name,
-                    fieldId: field.id,
-                    isCustom: field.isCustom,
-                    visible: field.visible,
-                    companyCustomFields: company.customFields,
-                    companyCustomFieldsKeys: company.customFields ? Object.keys(company.customFields) : [],
-                    companyId: company._id,
-                    companyName: company.name
-                  });
-                  
-                  // Debug: Log the field object to see if isCustom is set correctly
-                  console.log(`🏢 Field object for ${field.name}:`, {
-                    name: field.name,
-                    id: field.id,
-                    isCustom: field.isCustom,
-                    visible: field.visible,
-                    type: field.type
-                  });
-                  
-                  const fieldValue = field.isCustom 
-                    ? (company.customFields?.[field.name] || "")
-                    : (company[field.name] || "");
-                  
-                  // Debug logging for custom fields
-                  if (field.isCustom) {
-                    console.log(`🏢 Custom field ${field.name}:`, {
-                      fieldName: field.name,
-                      fieldId: field.id,
-                      companyCustomFields: company.customFields,
-                      companyCustomFieldsKeys: company.customFields ? Object.keys(company.customFields) : [],
-                      directAccess: company.customFields?.[field.name],
-                      value: fieldValue,
-                      companyId: company._id,
-                      companyName: company.name,
-                      // Debug the exact access pattern
-                      accessPattern: `company.customFields['${field.name}']`,
-                      result: company.customFields?.[field.name]
-                    });
-                  }
-                  
-                  // Debug: Log the final field value calculation
-                  console.log(`🏢 Final field value for ${field.name}:`, {
-                    fieldName: field.name,
-                    isCustom: field.isCustom,
-                    customFieldValue: field.isCustom ? company.customFields?.[field.name] : 'N/A',
-                    standardFieldValue: !field.isCustom ? company[field.name] : 'N/A',
-                    finalValue: fieldValue
-                  });
-                  
-                  return (
-                    <td
-                      key={field.id}
-                      className="px-3 py-2 border-r border-gray-200 truncate"
+                {/* Body */}
+                <tbody className="text-sm">
+                  {companies?.map((company, idx) => (
+                    <tr
+                      key={company._id || company.id}
+                      className="border-b border-gray-200 hover:bg-gray-50"
+                      onMouseEnter={() => setHoveredRow(idx)}
+                      onMouseLeave={() => setHoveredRow(null)}
                     >
-                      {field.name === "name" ? (
-                        <button
-                          onClick={() =>
-                            navigate(
-                              `/companies/${
-                                company.id || company._id
-                              }`
-                            )
-                          }
-                          className="text-left text-primary cursor-pointer w-full "
-                        >
-                          {fieldValue}
-                        </button>
-                      ) : (
-                        <div className="inline-edit-cell">
-                          {editingCell?.companyId === company._id && editingCell?.fieldName === field.name ? (
-                            <input
-                              type="text"
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={() => handleSaveEdit(company, field.name)}
-                              onKeyPress={(e) => e.key === 'Enter' && handleSaveEdit(company, field.name)}
-                              className="w-full px-2 py-1 border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              autoFocus
-                            />
-                          ) : (
-                            <div
-                              onClick={() => handleStartEdit(company._id, field.name, fieldValue)}
-                              className="cursor-pointer hover:bg-blue-50 px-2 py-1 rounded transition-colors"
-                              title="Click to edit"
-                            >
-                              {fieldValue}
-                            </div>
+                      {/* Checkbox */}
+                      <td className="w-12 text-center border-r border-gray-200">
+                        <input
+                          type="checkbox"
+                          checked={selectedCompanies.includes(
+                            company._id || company.id
                           )}
-                        </div>
+                          onChange={() => handleSelectCompany(company)}
+                          className="rounded border-border text-primary focus:ring-primary"
+                        />
+                      </td>
+
+                      {/* Dynamic Fields */}
+                      {fields?.companies ? (
+                        fields.companies
+                          .filter((f) => f.visible)
+                          .map((field) => {
+                            const fieldValue = field.isCustom
+                              ? company.customFields?.[field.name] || ""
+                              : company[field.name] || "";
+
+                            return (
+                              <td
+                                key={field.id}
+                                className="px-3 py-2 border-r border-gray-200 truncate"
+                              >
+                                {field.name === "name" ? (
+                                  <button
+                                    onClick={() =>
+                                      navigate(
+                                        `/companies/${
+                                          company.id || company._id
+                                        }`
+                                      )
+                                    }
+                                    className="text-left text-primary cursor-pointer w-full "
+                                  >
+                                    {fieldValue}
+                                  </button>
+                                ) : (
+                                  <div className="inline-edit-cell">
+                                    {editingCell?.companyId === company._id &&
+                                    editingCell?.fieldName === field.name ? (
+                                      <input
+                                        type="text"
+                                        value={editValue}
+                                        onChange={(e) =>
+                                          setEditValue(e.target.value)
+                                        }
+                                        onBlur={() =>
+                                          handleSaveEdit(company, field.name)
+                                        }
+                                        onKeyPress={(e) =>
+                                          e.key === "Enter" &&
+                                          handleSaveEdit(company, field.name)
+                                        }
+                                        className="w-full px-2 py-1 border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        autoFocus
+                                      />
+                                    ) : (
+                                      <div
+                                        onClick={() =>
+                                          handleStartEdit(
+                                            company._id,
+                                            field.name,
+                                            fieldValue
+                                          )
+                                        }
+                                        className="cursor-pointer hover:bg-blue-50 px-2 py-1 rounded transition-colors"
+                                        title="Click to edit"
+                                      >
+                                        {fieldValue}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
+                            );
+                          })
+                      ) : (
+                        <>
+                          <td className="px-3 py-2 border-r border-gray-200 truncate text-primary cursor-pointer ">
+                            {company.name}
+                          </td>
+                          <td className="px-3 py-2 border-r border-gray-200 truncate">
+                            {company.phone}
+                          </td>
+                          <td className="px-3 py-2 border-r border-gray-200 truncate">
+                            {company.website}
+                          </td>
+                          <td className="px-3 py-2 border-r border-gray-200 truncate">
+                            {company.email}
+                          </td>
+                        </>
                       )}
-                    </td>
-                  );
-                })
-            ) : (
-              <>
-                <td className="px-3 py-2 border-r border-gray-200 truncate text-primary cursor-pointer ">
-                  {company.name}
-                </td>
-                <td className="px-3 py-2 border-r border-gray-200 truncate">
-                  {company.phone}
-                </td>
-                <td className="px-3 py-2 border-r border-gray-200 truncate">
-                  {company.website}
-                </td>
-                <td className="px-3 py-2 border-r border-gray-200 truncate">
-                  {company.email}
-                </td>
-              </>
-            )}
 
-            {/* Actions */}
-            <td className="px-3 py-2 text-center">
-              <div
-                className={`flex items-center justify-center space-x-1 transition-opacity ${
-                  hoveredRow === idx ? "opacity-100" : "opacity-0"
-                }`}
-              >
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleEditCompany(company)}
-                  className="h-7 w-7 p-0"
-                  title="Edit"
-                >
-                  <Icon name="Edit2" size={14} />
-                </Button>
-                <div className="relative">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      setOpenDropdown(openDropdown === idx ? null : idx)
-                    }
-                    className="h-7 w-7 p-0"
-                  >
-                    <Icon name="MoreVertical" size={14} />
-                  </Button>
-                  {openDropdown === idx && (
-                    <div className="absolute right-0 mt-1 w-40 bg-white border rounded-lg shadow-lg py-1 z-50">
-                      <button
-                        onClick={() => window.open(`tel:${company.phone}`)}
-                        className="flex items-center space-x-2 px-3 py-2 text-sm hover:bg-gray-100 w-full text-left"
-                      >
-                        <Icon name="Phone" size={14} />
-                        <span>Call</span>
-                      </button>
-                      <button
-                        onClick={() => window.open(`mailto:${company.email}`)}
-                        className="flex items-center space-x-2 px-3 py-2 text-sm hover:bg-gray-100 w-full text-left"
-                      >
-                        <Icon name="Mail" size={14} />
-                        <span>Email</span>
-                      </button>
-                      <hr className="my-1" />
-                      <button
-                        onClick={() => handleDeleteCompany(company)}
-                        className="flex items-center space-x-2 px-3 py-2 text-sm hover:bg-red-50 text-red-600 w-full text-left"
-                      >
-                        <Icon name="Trash2" size={14} />
-                        <span>Delete</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-)}
-
+                      {/* Actions */}
+                      <td className="px-3 py-2 text-center">
+                        <div
+                          className={`flex items-center justify-center space-x-1 transition-opacity ${
+                            hoveredRow === idx ? "opacity-100" : "opacity-0"
+                          }`}
+                        >
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditCompany(company)}
+                            className="h-7 w-7 p-0"
+                            title="Edit"
+                          >
+                            <Icon name="Edit2" size={14} />
+                          </Button>
+                          <div className="relative">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                setOpenDropdown(
+                                  openDropdown === idx ? null : idx
+                                )
+                              }
+                              className="h-7 w-7 p-0"
+                            >
+                              <Icon name="MoreVertical" size={14} />
+                            </Button>
+                            {openDropdown === idx && (
+                              <div className="absolute right-0 mt-1 w-40 bg-white border rounded-lg shadow-lg py-1 z-50">
+                                <button
+                                  onClick={() =>
+                                    window.open(`tel:${company.phone}`)
+                                  }
+                                  className="flex items-center space-x-2 px-3 py-2 text-sm hover:bg-gray-100 w-full text-left"
+                                >
+                                  <Icon name="Phone" size={14} />
+                                  <span>Call</span>
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    window.open(`mailto:${company.email}`)
+                                  }
+                                  className="flex items-center space-x-2 px-3 py-2 text-sm hover:bg-gray-100 w-full text-left"
+                                >
+                                  <Icon name="Mail" size={14} />
+                                  <span>Email</span>
+                                </button>
+                                <hr className="my-1" />
+                                <button
+                                  onClick={() => handleDeleteCompany(company)}
+                                  className="flex items-center space-x-2 px-3 py-2 text-sm hover:bg-red-50 text-red-600 w-full text-left"
+                                >
+                                  <Icon name="Trash2" size={14} />
+                                  <span>Delete</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </main>
 
         <CompanySlideForm

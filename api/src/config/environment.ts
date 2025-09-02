@@ -47,6 +47,9 @@ const envSchema = z.object({
   // CORS
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   
+  // API Base URL
+  API_BASE_URL: z.string().default('http://localhost:3001'),
+  
   // OAuth
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),

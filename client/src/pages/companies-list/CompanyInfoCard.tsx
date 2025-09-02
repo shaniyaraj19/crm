@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import Icon from '../../components/AppIcon';
-
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
+import { updateCompany } from '../../services/conpany';
 
 const CompanyInfoCard = ({ company, onSave }: { company: any; onSave: (company: any) => void }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState(company ?? {});
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleEdit = () => {
+    const companyCopy = JSON.parse(JSON.stringify(company ?? {}));
     setIsEditing(true);
-    setEditData(company ?? {});
+    setEditData(companyCopy);
   };
 
   const handleCancel = () => {
@@ -19,44 +21,143 @@ const CompanyInfoCard = ({ company, onSave }: { company: any; onSave: (company: 
     setEditData(company ?? {});
   };
 
-  const handleSave = () => {
-    onSave(editData);
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      
+      const updateData: any = {};
+      let hasChanges = false;
+      
+      // Handle simple string fields
+      const simpleFields = ['name', 'email', 'phone', 'website'];
+      simpleFields.forEach(field => {
+        const originalValue = company?.[field];
+        const editedValue = editData?.[field];
+        const hasChanged = originalValue !== editedValue;
+        
+        if (hasChanged) {
+          updateData[field] = editedValue;
+          hasChanges = true;
+        }
+      });
+      
+      // Handle address field specifically (it's an object in the backend)
+      const originalAddress = company?.address || {};
+      const editedAddress = editData?.address || {};
+      
+      // Check if address has changed by comparing the string representation
+      const originalAddressStr = company?.address || '';
+      const editedAddressStr = editData?.address || '';
+      
+      if (originalAddressStr !== editedAddressStr) {
+        // If address is a string, convert it to the expected object format
+        if (typeof editedAddressStr === 'string' && editedAddressStr.trim()) {
+          // Parse the address string into components (simple parsing)
+          const addressParts = editedAddressStr.split(',').map(part => part.trim());
+          updateData.address = {
+            street: addressParts[0] || '',
+            city: addressParts[1] || '',
+            state: addressParts[2] || '',
+            zipCode: addressParts[3] || '',
+            country: addressParts[4] || ''
+          };
+        } else if (typeof editedAddressStr === 'string' && !editedAddressStr.trim()) {
+          // If address is empty string, set it to undefined to clear it
+          updateData.address = undefined;
+        } else {
+          // If it's already an object, use it as is
+          updateData.address = editedAddressStr;
+        }
+        hasChanges = true;
+      }
+      
+      if (!hasChanges) {
+        setIsEditing(false);
+        return;
+      }
+      
+      try {
+        const companyId = company._id || company.id;
+        
+        // Log the exact data being sent
+        console.log('🚀 Sending update data:', updateData);
+        console.log('📊 Data types:', Object.keys(updateData).map(key => ({
+          field: key,
+          value: updateData[key],
+          type: typeof updateData[key],
+          length: updateData[key]?.length
+        })));
+        
+        const updatedCompany = await updateCompany(companyId, updateData);
+        
+        onSave(updatedCompany);
+        
+        if (company && updatedCompany) {
+          const mergedCompany = { ...company, ...updatedCompany };
+        }
+        
+        setIsEditing(false);
+        setEditData({});
+        alert('Company updated successfully!');
+        
+      } catch (error: any) {
+        console.error('Error updating company:', error);
+        
+        // Enhanced error logging to see what's actually failing
+        if (error.response) {
+          console.error('Response status:', error.response.status);
+          console.error('Response data:', error.response.data);
+          console.error('Response headers:', error.response.headers);
+          
+          // Try to get more specific error details
+          if (error.response.data && error.response.data.errors) {
+            console.error('Validation errors:', error.response.data.errors);
+            const errorDetails = error.response.data.errors.map((err: any) => 
+              `${err.path || err.field}: ${err.message}`
+            ).join('\n');
+            alert(`Validation failed:\n${errorDetails}`);
+          } else if (error.response.data && error.response.data.message) {
+            alert(`Failed to update company: ${error.response.data.message}`);
+          } else {
+            alert(`Failed to update company: ${error.message || 'Unknown error'}`);
+          }
+        } else {
+          alert(`Failed to update company: ${error.message || 'Unknown error'}`);
+        }
+        
+        setEditData(company ?? {});
+      }
+      
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setEditData((prev: any) => ({
-      ...(prev || {}),
-      [field]: value
-    }));
+    setEditData((prev: any) => {
+      const updated = {
+        ...(prev || {}),
+        [field]: value
+      };
+      return updated;
+    });
   };
 
-  // const statusOptions = [
-  //   { value: 'active', label: 'Active' },
-  //   { value: 'inactive', label: 'Inactive' },
-  //   { value: 'prospect', label: 'Prospect' },
-  //   { value: 'customer', label: 'Customer' },
-  //   { value: 'partner', label: 'Partner' }
-  // ];
-
-  // const industryOptions = [
-  //   { value: 'technology', label: 'Technology' },
-  //   { value: 'healthcare', label: 'Healthcare' },
-  //   { value: 'finance', label: 'Finance' },
-  //   { value: 'manufacturing', label: 'Manufacturing' },
-  //   { value: 'retail', label: 'Retail' },
-  //   { value: 'consulting', label: 'Consulting' },
-  //   { value: 'education', label: 'Education' },
-  //   { value: 'other', label: 'Other' }
-  // ];
-
-  // const companySizeOptions = [
-  //   { value: '1-10', label: '1-10 employees' },
-  //   { value: '11-50', label: '11-50 employees' },
-  //   { value: '51-200', label: '51-200 employees' },
-  //   { value: '201-1000', label: '201-1000 employees' },
-  //   { value: '1000+', label: '1000+ employees' }
-  // ];
+  // Helper function to format address for display
+  const formatAddress = (address: any) => {
+    if (!address) return '';
+    if (typeof address === 'string') return address;
+    
+    const parts = [
+      address.street,
+      address.city,
+      address.state,
+      address.zipCode,
+      address.country
+    ].filter(Boolean);
+    
+    return parts.join(', ');
+  };
 
   return (
     <div className="bg-card border border-border rounded-lg shadow-elevation-1 w-full">
@@ -76,7 +177,6 @@ const CompanyInfoCard = ({ company, onSave }: { company: any; onSave: (company: 
             <h2 className="text-2xl font-semibold text-foreground">
               {company?.name || 'Company Name'}
             </h2>
-            <p className="text-muted-foreground">{company?.industry || 'Industry'} • {company?.companySize || 'Company Size'}</p>
           </div>
         </div>
         
@@ -90,8 +190,14 @@ const CompanyInfoCard = ({ company, onSave }: { company: any; onSave: (company: 
               <Button variant="outline" onClick={handleCancel}>
                 Cancel
               </Button>
-              <Button variant="default" onClick={handleSave} iconName="Save" iconPosition="left">
-                Save Changes
+              <Button 
+                variant="default" 
+                onClick={handleSave} 
+                iconName="Save" 
+                iconPosition="left"
+                disabled={isSaving}
+              >
+                {isSaving ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           )}
@@ -118,32 +224,8 @@ const CompanyInfoCard = ({ company, onSave }: { company: any; onSave: (company: 
                   type="url"
                   value={editData.website || ''}
                   onChange={(e) => handleInputChange('website', e.target.value)}
+                  placeholder="https://example.com"
                 />
-                {/* <Select
-                  label="Industry"
-                  options={industryOptions}
-                  value={editData.industry || ''}
-                  onChange={(value: string) => handleInputChange('industry', value)}
-                /> */}
-                {/* <Select
-                  label="Company Size"
-                  options={companySizeOptions}
-                  value={editData.companySize || ''}
-                  onChange={(value: string) => handleInputChange('companySize', value)}
-                /> */}
-                {/* <Select
-                  label="Status"
-                  options={statusOptions}
-                  value={editData.status || 'inactive'}
-                  onChange={(value: string) => handleInputChange('status', value)}
-                />
-                <Input
-                  label="Founded Year"
-                  type="number"
-                  value={editData.foundedYear || ''}
-                  onChange={(e) => handleInputChange('foundedYear', e.target.value)}
-                  placeholder="e.g., 2020"
-                /> */}
               </>
             ) : (
               <>
@@ -165,39 +247,6 @@ const CompanyInfoCard = ({ company, onSave }: { company: any; onSave: (company: 
                     </div>
                   </div>
                 )}
-                {/* <div className="flex items-center space-x-3">
-                  <Icon name="Briefcase" size={16} className="text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Industry</p>
-                    <p className="font-medium text-foreground capitalize">{company?.industry || '-'}</p>
-                  </div>
-                </div> */}
-                {/* <div className="flex items-center space-x-3">
-                  <Icon name="Users" size={16} className="text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Company Size</p>
-                    <p className="font-medium text-foreground">{company?.companySize || '-'}</p>
-                  </div>
-                </div> */}
-                {/* <div className="flex items-center space-x-3">
-                  <Icon name="Tag" size={16} className="text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Status</p>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
-                      (company?.status || 'inactive') === 'active' ? 'bg-success/10 text-success' :
-                      (company?.status || '') === 'prospect'? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'
-                    }`}>
-                      {company?.status || 'inactive'}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Icon name="Calendar" size={16} className="text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Founded Year</p>
-                    <p className="font-medium text-foreground">{company?.foundedYear || '-'}</p>
-                  </div>
-                </div> */}
               </>
             )}
           </div>
@@ -213,29 +262,20 @@ const CompanyInfoCard = ({ company, onSave }: { company: any; onSave: (company: 
                   type="email"
                   value={editData.email || ''}
                   onChange={(e) => handleInputChange('email', e.target.value)}
+                  placeholder="contact@company.com"
                 />
                 <Input
                   label="Phone"
                   type="tel"
                   value={editData.phone || ''}
                   onChange={(e) => handleInputChange('phone', e.target.value)}
-                />
-                <Input
-                  label="Website"
-                  type="url"
-                  value={editData.website || ''}
-                  onChange={(e) => handleInputChange('website', e.target.value)}
-                />
-                <Input
-                  label="LinkedIn"
-                  value={editData.linkedin || ''}
-                  onChange={(e) => handleInputChange('linkedin', e.target.value)}
+                  placeholder="+1 (555) 123-4567"
                 />
                 <Input
                   label="Address"
                   value={editData.address || ''}
                   onChange={(e) => handleInputChange('address', e.target.value)}
-                  placeholder="Street, City, State, ZIP"
+                  placeholder="Street, City, State, ZIP, Country"
                 />
               </>
             ) : (
@@ -267,23 +307,12 @@ const CompanyInfoCard = ({ company, onSave }: { company: any; onSave: (company: 
                   </div>
                 </div>
                 
-                {company?.linkedin && (
-                  <div className="flex items-center space-x-3">
-                    <Icon name="Linkedin" size={16} className="text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">LinkedIn</p>
-                      <a href={company.linkedin} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:text-primary/80 transition-smooth">
-                        View Company Profile
-                      </a>
-                    </div>
-                  </div>
-                )}
                 {company?.address && (
                   <div className="flex items-center space-x-3">
                     <Icon name="MapPin" size={16} className="text-muted-foreground" />
                     <div>
                       <p className="text-sm text-muted-foreground">Address</p>
-                      <p className="font-medium text-foreground">{company.address}</p>
+                      <p className="font-medium text-foreground">{formatAddress(company.address)}</p>
                     </div>
                   </div>
                 )}

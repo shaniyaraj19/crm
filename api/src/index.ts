@@ -1,6 +1,7 @@
 import 'express-async-errors';
 import express from 'express';
 import { Server } from 'http';
+
 import { validateEnvironment, env } from './config/environment';
 import { connectDatabase } from './config/database';
 import { logger } from './utils/logger';
@@ -63,7 +64,9 @@ class App {
     this.app.get('/health', healthCheck);
     this.app.get('/api', apiInfo);
     this.app.get('/api/v1', apiInfo);
-    this.app.get('/all',)
+    
+
+    
     // API routes
     this.app.use(`/api/${env.API_VERSION}`, routes);
 

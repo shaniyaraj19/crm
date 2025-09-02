@@ -29,19 +29,7 @@ export const JWT = {
   VERIFY_TOKEN_EXPIRES: '24h',
 } as const;
 
-// File upload settings
-export const FILE_UPLOAD = {
-  MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
-  ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-  ALLOWED_DOCUMENT_TYPES: [
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'text/csv',
-  ],
-} as const;
+
 
 // Email settings
 export const EMAIL = {
@@ -166,8 +154,7 @@ export const ERROR_CODES = {
   NOT_FOUND: 'NOT_FOUND',
   DUPLICATE_ENTRY: 'DUPLICATE_ENTRY',
   RATE_LIMIT_EXCEEDED: 'RATE_LIMIT_EXCEEDED',
-  FILE_TOO_LARGE: 'FILE_TOO_LARGE',
-  INVALID_FILE_TYPE: 'INVALID_FILE_TYPE',
+
   DATABASE_ERROR: 'DATABASE_ERROR',
   EXTERNAL_SERVICE_ERROR: 'EXTERNAL_SERVICE_ERROR',
   INTERNAL_SERVER_ERROR: 'INTERNAL_SERVER_ERROR',

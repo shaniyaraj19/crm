@@ -78,8 +78,3 @@ export class ExternalServiceError extends AppError {
   }
 }
 
-export class FileUploadError extends AppError {
-  constructor(message: string) {
-    super(message, HTTP_STATUS.BAD_REQUEST, 'FILE_UPLOAD_ERROR');
-  }
-}

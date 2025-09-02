@@ -12,7 +12,7 @@ export const securityHeaders = helmet({
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
+      imgSrc: ["'self'", "data:", "https:", "http://localhost:3001", "http://localhost:5173", "http://127.0.0.1:3001", "http://127.0.0.1:5173"],
       connectSrc: ["'self'"],
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
@@ -129,17 +129,7 @@ export const apiInfo = (_req: Request, res: Response) => {
   res.status(200).json(info);
 };
 
-/**
- * Security headers for file uploads
- */
-export const fileUploadSecurity = (_req: Request, res: Response, next: NextFunction) => {
-  // Set security headers for file uploads
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  
-  next();
-};
+
 
 /**
  * Sanitize user input

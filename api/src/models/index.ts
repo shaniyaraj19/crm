@@ -4,3 +4,6 @@ export * from './Deal';
 export * from './Contact';
 export * from './Company';
 export * from './Activity';
+export * from './Task';
+export * from './Note';
+export * from './Schedule';

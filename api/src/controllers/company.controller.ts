@@ -306,16 +306,16 @@ export class CompanyController {
         throw new NotFoundError('Company');
       }
 
-      // Check if company has contacts or deals
-      const [contactCount, dealCount, subsidiaryCount] = await Promise.all([
-        Contact.countDocuments({ companyId: id }),
-        Deal.countDocuments({ companyId: id }),
-        Company.countDocuments({ parentCompanyId: id }),
-      ]);
+      // // Check if company has contacts or deals
+      // const [contactCount, dealCount, subsidiaryCount] = await Promise.all([
+      //   Contact.countDocuments({ companyId: id }),
+      //   Deal.countDocuments({ companyId: id }),
+      //   Company.countDocuments({ parentCompanyId: id }),
+      // ]);
 
-      if (contactCount > 0 || dealCount > 0 || subsidiaryCount > 0) {
-        throw new ConflictError('Cannot delete company with associated contacts, deals, or subsidiaries');
-      }
+      // if (contactCount > 0 || dealCount > 0 || subsidiaryCount > 0) {
+      //   throw new ConflictError('Cannot delete company with associated contacts, deals, or subsidiaries');
+      // }
 
       // Soft delete
       company.isDeleted = true;

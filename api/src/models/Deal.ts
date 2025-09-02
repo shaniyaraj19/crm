@@ -1,5 +1,6 @@
 import { Schema, model, Types } from 'mongoose';
 import { BaseDocument, DealPriority, DealStatus } from '../types/common';
+import { IPipeline } from './Pipeline';
 
 export interface IDealStageHistory {
   stageId: string;
@@ -73,6 +74,8 @@ export interface IDeal extends BaseDocument {
   calculateDaysInStage(): number;
   isOverdue(): boolean;
   isStuck(stuckDays?: number): boolean;
+  initializeStageHistory(): Promise<void>;
+  fixStageHistory(): Promise<void>;
 }
 
 const dealStageHistorySchema = new Schema<IDealStageHistory>({
@@ -362,7 +365,7 @@ dealSchema.methods.moveToStage = function(stageId: string, reason?: string, chan
   // Add new stage history entry
   this.stageHistory.push({
     stageId,
-    stageName: '', // This should be populated with actual stage name
+    stageName: 'Unknown Stage', // Will be populated by pre-save hook
     enteredAt: new Date(),
     reason,
     changedBy: changedBy || this.updatedBy,
@@ -387,6 +390,81 @@ dealSchema.methods.isStuck = function(stuckDays: number = 7): boolean {
   return this.calculateDaysInStage() > stuckDays && this.status === DealStatus.OPEN;
 };
 
+// Method to initialize stage history for new deals
+dealSchema.methods.initializeStageHistory = async function() {
+  try {
+    // Get the stage name from the pipeline
+    const Pipeline = this.model('Pipeline');
+    const pipeline = await Pipeline.findById(this.pipelineId).lean() as IPipeline | null;
+    if (pipeline && pipeline.stages) {
+      const stage = pipeline.stages.find((s) => s._id?.toString() === this.stageId);
+      const stageName = stage?.name || 'Unknown Stage';
+      
+      this.stageHistory.push({
+        stageId: this.stageId,
+        stageName: stageName,
+        enteredAt: this.currentStageEnteredAt,
+        changedBy: this.createdBy!,
+      });
+    } else {
+      // Fallback if pipeline not found
+      this.stageHistory.push({
+        stageId: this.stageId,
+        stageName: 'Unknown Stage',
+        enteredAt: this.currentStageEnteredAt,
+        changedBy: this.createdBy!,
+      });
+    }
+  } catch (error) {
+    // Fallback if any error occurs
+    this.stageHistory.push({
+      stageId: this.stageId,
+      stageName: 'Unknown Stage',
+      enteredAt: this.currentStageEnteredAt,
+      changedBy: this.createdBy!,
+    });
+  }
+};
+
+// Method to fix stage history for existing deals
+dealSchema.methods.fixStageHistory = async function() {
+  try {
+    // Get the stage name from the pipeline
+    const Pipeline = this.model('Pipeline');
+    const pipeline = await Pipeline.findById(this.pipelineId).lean() as IPipeline | null;
+    
+    if (pipeline && pipeline.stages) {
+      // Fix any stage history entries with empty stageName
+      for (let i = 0; i < this.stageHistory.length; i++) {
+        const historyEntry = this.stageHistory[i];
+        if (!historyEntry.stageName || historyEntry.stageName === '') {
+          const stage = pipeline.stages.find((s) => s._id?.toString() === historyEntry.stageId);
+          historyEntry.stageName = stage?.name || 'Unknown Stage';
+          console.log(`Fixed stage history entry ${i}: stageName = ${historyEntry.stageName}`);
+        }
+      }
+    } else {
+      // Fallback: set all empty stageNames to 'Unknown Stage'
+      for (let i = 0; i < this.stageHistory.length; i++) {
+        const historyEntry = this.stageHistory[i];
+        if (!historyEntry.stageName || historyEntry.stageName === '') {
+          historyEntry.stageName = 'Unknown Stage';
+          console.log(`Fixed stage history entry ${i}: stageName = Unknown Stage`);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error fixing stage history:', error);
+    // Fallback: set all empty stageNames to 'Unknown Stage'
+    for (let i = 0; i < this.stageHistory.length; i++) {
+      const historyEntry = this.stageHistory[i];
+      if (!historyEntry.stageName || historyEntry.stageName === '') {
+        historyEntry.stageName = 'Unknown Stage';
+      }
+    }
+  }
+};
+
 // Pre-save middleware to update daysInCurrentStage
 dealSchema.pre('save', function(next) {
   if (this.isModified('currentStageEnteredAt') || this.isNew) {
@@ -395,15 +473,20 @@ dealSchema.pre('save', function(next) {
   next();
 });
 
-// Pre-save middleware to initialize stage history
-dealSchema.pre('save', function(next) {
-  if (this.isNew && this.stageHistory.length === 0) {
-    this.stageHistory.push({
-      stageId: this.stageId,
-      stageName: '', // This should be populated with actual stage name
-      enteredAt: this.currentStageEnteredAt,
-      changedBy: this.createdBy!,
-    });
+// Pre-save middleware to initialize and fix stage history
+dealSchema.pre('save', async function(next) {
+  try {
+    // For new deals: initialize stage history
+    if (this.isNew && this.stageHistory.length === 0) {
+      await this.initializeStageHistory();
+    }
+    
+    // For existing deals: fix any invalid stage history entries
+    if (!this.isNew && this.stageHistory.length > 0) {
+      await this.fixStageHistory();
+    }
+  } catch (error) {
+    console.error('Error in pre-save stage history middleware:', error);
   }
   next();
 });

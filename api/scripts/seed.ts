@@ -186,11 +186,37 @@ class DatabaseSeeder {
         description: 'Post-sale customer success pipeline',
         organizationId: orgId,
         stages: [
-          { name: 'Onboarding', order: 1, probability: 20, color: '#8b5cf6' },
-          { name: 'Implementation', order: 2, probability: 50, color: '#a78bfa' },
-          { name: 'Go-Live', order: 3, probability: 80, color: '#c4b5fd' },
-          { name: 'Success', order: 4, probability: 100, color: '#10b981' }
-        ],
+          
+            { 
+              name: 'Onboarding', 
+              order: 1, 
+              probability: 20, 
+              color: '#3b82f6',   // blue-500
+              bg: '#dbeafe'       // blue-100
+            },
+            { 
+              name: 'Implementation', 
+              order: 2, 
+              probability: 50, 
+              color: '#f59e0b',   // amber-500
+              bg: '#fef3c7'       // amber-100
+            },
+            { 
+              name: 'Go-Live', 
+              order: 3, 
+              probability: 80, 
+              color: '#ef4444',   // red-500
+              bg: '#fee2e2'       // red-100
+            },
+            { 
+              name: 'Success', 
+              order: 4, 
+              probability: 100, 
+              color: '#10b981',   // green-500
+              bg: '#d1fae5'       // green-100
+            }
+          ],
+          
         isActive: true,
         createdBy: orgId
       });
