@@ -553,8 +553,9 @@ const CompaniesPage: React.FC = () => {
           )}
 
           {view === "list" && (
-            <div className="overflow-x-auto shadow-md rounded-lg h-full">
-              <table className="min-w-full text-left text-sm">
+            <div className="shadow-md rounded-lg border border-gray-200">
+              <div className="overflow-x-auto" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+                <table className="min-w-full text-left text-sm border-collapse">
                 <thead className="bg-gray-100">
                   <tr>
                     <th className="px-4 py-2">
@@ -614,7 +615,7 @@ const CompaniesPage: React.FC = () => {
                   {companies?.map((company, idx) => (
                     <tr
                       key={idx}
-                      className="border-b hover:bg-gray-50"
+                      className="border-b border-gray-200 hover:bg-gray-50"
                       onMouseEnter={() => setHoveredRow(idx)}
                       onMouseLeave={() => setHoveredRow(null)}
                     >
@@ -745,14 +746,16 @@ const CompaniesPage: React.FC = () => {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+                </table>
+              </div>
             </div>
           )}
 
           {/* --- Grid View (Excel Style) --- */}
           {view === "grid" && (
-            <div className="overflow-x-auto shadow-md h-full rounded-lg border border-gray-200">
-              <table className="min-w-full table-fixed border-collapse">
+            <div className="shadow-md rounded-lg border border-gray-200">
+              <div className="overflow-x-auto" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+                <table className="min-w-full table-fixed border-collapse">
                 {/* Header */}
                 <thead className="bg-gray-100 text-gray-700 text-sm font-medium border-b border-gray-200">
                   <tr>
@@ -982,7 +985,8 @@ const CompaniesPage: React.FC = () => {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+                </table>
+              </div>
             </div>
           )}
         </main>

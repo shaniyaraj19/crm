@@ -71,7 +71,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, isSidebarCollapsed 
      if (path === '/companies' && location.pathname.startsWith('/companies')) return 'Companies';
     if (path === '/analytics-dashboard') return 'Analytics';
     if (path === '/settings') return 'Settings';
-    return 'V-Accel CRM';
+    return 'Companies Details';
   };
 
   return (

@@ -17,9 +17,10 @@ interface RelatedDealsCardProps {
   onAddDeal?: () => void;
   onEditDeal?: (deal: Deal) => void;
   onDeleteDeal?: (dealId: string) => void;
+  onViewAllDeals?: () => void;
 }
 
-const RelatedDealsCard = ({ deals, onAddDeal, onEditDeal, onDeleteDeal }: RelatedDealsCardProps) => {
+const RelatedDealsCard = ({ deals, onAddDeal, onEditDeal, onDeleteDeal, onViewAllDeals }: RelatedDealsCardProps) => {
 
   const totalValue = deals.reduce((sum: number, deal: Deal) => sum + deal.value, 0);
   const wonDeals = deals.filter((deal: Deal) => deal.stageName === 'won');
@@ -40,6 +41,12 @@ const RelatedDealsCard = ({ deals, onAddDeal, onEditDeal, onDeleteDeal }: Relate
   const handleDeleteDeal = (dealId: string) => {
     if (onDeleteDeal) {
       onDeleteDeal(dealId);
+    }
+  };
+
+  const handleViewAllDeals = () => {
+    if (onViewAllDeals) {
+      onViewAllDeals();
     }
   };
 
@@ -99,7 +106,7 @@ const RelatedDealsCard = ({ deals, onAddDeal, onEditDeal, onDeleteDeal }: Relate
             <p className="text-2xl font-bold text-foreground">{formatCurrency(totalValue)}</p>
             <p className="text-sm text-muted-foreground">Total Deal Value</p>
           </div>
-          <div className="grid grid-cols-2 gap-4 text-center">
+          {/* <div className="grid grid-cols-2 gap-4 text-center">
             <div>
               <p className="text-lg font-semibold text-success">{wonDeals.length}</p>
               <p className="text-xs text-muted-foreground">Won</p>
@@ -108,7 +115,7 @@ const RelatedDealsCard = ({ deals, onAddDeal, onEditDeal, onDeleteDeal }: Relate
               <p className="text-lg font-semibold text-primary">{activeDeals.length}</p>
               <p className="text-xs text-muted-foreground">Active</p>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 
@@ -139,7 +146,7 @@ const RelatedDealsCard = ({ deals, onAddDeal, onEditDeal, onDeleteDeal }: Relate
                       variant="ghost"
                       size="sm"
                       onClick={() => handleEditDeal(deal)}
-                      className="h-8 w-8 p-0"
+                      className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
                     >
                       <Icon name="Edit" size={14} />
                     </Button>
@@ -147,18 +154,21 @@ const RelatedDealsCard = ({ deals, onAddDeal, onEditDeal, onDeleteDeal }: Relate
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDeleteDeal(deal.id)}
-                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                      className="h-8 w-8 p-0 text-red-600 hover:bg-red-50 hover:text-red-700"
                     >
                       <Icon name="Trash" size={14} />
                     </Button>
-                    <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
                   </div>
                 </div>
               </div>
             ))}
             
-            {deals.length > 3 && (
-              <Button variant="ghost" className="w-full mt-3">
+            {deals.length > 1 && (
+              <Button 
+                variant="ghost" 
+                className="w-full mt-3"
+                onClick={handleViewAllDeals}
+              >
                 View All {deals.length} Deals
                 <Icon name="ArrowRight" size={16} className="ml-2" />
               </Button>

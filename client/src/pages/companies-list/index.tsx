@@ -48,6 +48,9 @@ const CompanyDetails: React.FC = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isLoadingActivities, setIsLoadingActivities] = useState(false);
 
+  // Tab navigation state
+  const [activeTab, setActiveTab] = useState("activities");
+
   // Deal modal state
   const [showDealModal, setShowDealModal] = useState(false);
   const [dealForm, setDealForm] = useState({
@@ -709,6 +712,8 @@ const CompanyDetails: React.FC = () => {
                 noteRefreshTrigger={noteRefreshTrigger}
                 onEditDeal={handleShowEditDeal}
                 onDeleteDeal={handleDeleteDeal}
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
               />
             </div>
 
@@ -731,8 +736,12 @@ const CompanyDetails: React.FC = () => {
                 onAddDeal={handleShowDealModal}
                 onEditDeal={handleShowEditDeal}
                 onDeleteDeal={handleDeleteDeal}
+                onViewAllDeals={() => setActiveTab("deals")}
               />
-              <RecentActivityCard activities={activities} />
+              <RecentActivityCard 
+                activities={activities} 
+                onViewAllActivity={() => setActiveTab("activities")}
+              />
             </div>
           </div>
         </main>

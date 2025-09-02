@@ -36,19 +36,30 @@ interface CompanyTabsProps {
   noteRefreshTrigger?: number;
   onEditDeal?: (deal: any) => void;
   onDeleteDeal?: (dealId: string) => void;
+  activeTab?: string;
+  onTabChange?: (tab: string) => void;
 }
 
 const CompanyTabs = ({
   company,
   deals = [],
   activities = [],
+  onAddTask,
+  onAddSchedule,
+  onAddNote,
   taskRefreshTrigger,
   scheduleRefreshTrigger,
   noteRefreshTrigger,
   onEditDeal,
   onDeleteDeal,
+  activeTab: externalActiveTab,
+  onTabChange,
 }: CompanyTabsProps) => {
-  const [activeTab, setActiveTab] = useState("activities");
+  const [internalActiveTab, setInternalActiveTab] = useState("activities");
+  
+  // Use external activeTab if provided, otherwise use internal state
+  const activeTab = externalActiveTab || internalActiveTab;
+  const setActiveTab = onTabChange || setInternalActiveTab;
   const [newNote, setNewNote] = useState("");
   const [newNoteType, setNewNoteType] = useState("general");
   const [notes, setNotes] = useState<any[]>([]);
@@ -274,7 +285,7 @@ const CompanyTabs = ({
   };
 
   const getFileTypeColor = (type: string, filename?: string) => {
-    if (!type) return "bg-gray-100 text-gray-800";
+    if (!type) return "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-600 border border-gray-300";
 
     const fileType = type.toLowerCase().trim();
 
@@ -282,58 +293,58 @@ const CompanyTabs = ({
       const extension = filename.split(".").pop()?.toLowerCase();
       switch (extension) {
         case "pdf":
-          return "bg-red-100 text-red-800";
+          return "bg-gradient-to-r from-red-100 to-red-200 text-red-600 border border-red-300";
         case "docx":
         case "doc":
-          return "bg-blue-100 text-blue-800";
+          return "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-600 border border-blue-300";
         case "xlsx":
         case "xls":
-          return "bg-green-100 text-green-800";
+          return "bg-gradient-to-r from-green-100 to-green-200 text-green-600 border border-green-300";
         case "pptx":
         case "ppt":
-          return "bg-orange-100 text-orange-800";
+          return "bg-gradient-to-r from-orange-100 to-orange-200 text-orange-600 border border-orange-300";
         case "jpg":
         case "jpeg":
         case "png":
         case "gif":
         case "webp":
         case "svg":
-          return "bg-purple-100 text-purple-800";
+          return "bg-gradient-to-r from-purple-100 to-purple-200 text-purple-600 border border-purple-300";
         case "txt":
         case "md":
-          return "bg-gray-100 text-gray-800";
+          return "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-600 border border-gray-300";
       }
     }
     switch (fileType) {
       case "image":
-        return "bg-purple-100 text-purple-800";
+        return "bg-gradient-to-r from-purple-100 to-purple-200 text-purple-600 border border-purple-300";
       case "document":
-        return "bg-blue-100 text-blue-800";
+        return "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-600 border border-blue-300";
       case "video":
-        return "bg-indigo-100 text-indigo-800";
+        return "bg-gradient-to-r from-indigo-100 to-indigo-200 text-indigo-600 border border-indigo-300";
       case "audio":
-        return "bg-pink-100 text-pink-800";
+        return "bg-gradient-to-r from-pink-100 to-pink-200 text-pink-600 border border-pink-300";
       case "archive":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-600 border border-yellow-300";
       case "text":
-        return "bg-gray-100 text-gray-800";
+        return "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-600 border border-gray-300";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-600 border border-gray-300";
     }
   };
 
   const getActivityTypeColor = (type: string) => {
     switch (type) {
       case "general":
-        return "bg-gray-100 text-gray-800";
+        return "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-600 border border-gray-300";
       case "meeting":
-        return "bg-blue-100 text-blue-800";
+        return "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-600 border border-blue-300";
       case "call":
-        return "bg-green-100 text-green-800";
+        return "bg-gradient-to-r from-green-100 to-green-200 text-green-600 border border-green-300";
       case "email":
-        return "bg-purple-100 text-purple-800";
+        return "bg-gradient-to-r from-purple-100 to-purple-200 text-purple-600 border border-purple-300";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-600 border border-gray-300";
     }
   };
 
@@ -843,7 +854,13 @@ const CompanyTabs = ({
       case "activities":
         return (
           <div className="space-y-4">
-            {activities.map((activity) => (
+            {activities
+              .sort((a, b) => {
+                const dateA = new Date(a.createdAt || 0);
+                const dateB = new Date(b.createdAt || 0);
+                return dateB.getTime() - dateA.getTime();
+              })
+              .map((activity) => (
               <div
                 key={activity._id}
                 className="flex items-start space-x-3 p-4 bg-muted/30 rounded-lg"
@@ -934,15 +951,15 @@ const CompanyTabs = ({
               </div>
             ) : (
               deals.map((deal) => (
-                <div key={deal.id} className="p-4 bg-muted/30 rounded-lg">
+                <div key={deal.id} className="p-4 bg-muted/30 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center space-x-2">
                       <h4 className="font-medium text-foreground">
                         {deal.name}
                       </h4>
-                      <span className="text-lg font-semibold text-foreground">
+                      {/* <span className="text-lg font-semibold text-foreground">
                         {formatCurrency(deal.value)}
-                      </span>
+                      </span> */}
                     </div>
                     <div className="flex items-center space-x-2">
                       <Button
@@ -951,7 +968,7 @@ const CompanyTabs = ({
                         onClick={() => handleEditDeal(deal)}
                         iconName="Edit"
                         iconPosition="left"
-                        className="h-8 px-2 text-xs"
+                        className="h-8 px-2 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
                       >
                         Edit
                       </Button>
@@ -975,15 +992,15 @@ const CompanyTabs = ({
                       <span
                         className={`inline-block px-2 py-1 text-xs rounded-full font-medium capitalize ${
                           (deal.stageName || deal.stage) === "Onboarding"
-                            ? "bg-blue-100 text-blue-800"
+                            ? "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-600 border border-blue-300"
                             : (deal.stageName || deal.stage) ===
                               "Implementation"
-                            ? "bg-amber-100 text-amber-800"
+                            ? "bg-gradient-to-r from-amber-100 to-amber-200 text-amber-600 border border-amber-300"
                             : (deal.stageName || deal.stage) === "Go-Live"
-                            ? "bg-red-100 text-red-800"
+                            ? "bg-gradient-to-r from-red-100 to-red-200 text-red-600 border border-red-300"
                             : (deal.stageName || deal.stage) === "Success"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-800"
+                            ? "bg-gradient-to-r from-green-100 to-green-200 text-green-600 border border-green-300"
+                            : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-600 border border-gray-300"
                         }`}
                       >
                         {deal.stageName || deal.stage || "Unknown Stage"}
@@ -1038,7 +1055,7 @@ const CompanyTabs = ({
               tasks.map((task) => (
                 <div
                   key={task._id || task.id}
-                  className="p-4 bg-muted/30 rounded-lg"
+                  className="p-4 bg-muted/30 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center space-x-2">
@@ -1048,10 +1065,10 @@ const CompanyTabs = ({
                       <span
                         className={`inline-block px-2 py-1 text-xs rounded-full ${
                           task.priority === "high"
-                            ? "bg-red-100 text-red-800"
+                            ? "bg-gradient-to-r from-red-100 to-red-200 text-red-600 border border-red-300"
                             : task.priority === "medium"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-green-100 text-green-800"
+                            ? "bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-600 border border-yellow-300"
+                            : "bg-gradient-to-r from-green-100 to-green-200 text-green-600 border border-green-300"
                         }`}
                       >
                         {task.priority}
@@ -1059,10 +1076,10 @@ const CompanyTabs = ({
                       <span
                         className={`inline-block px-2 py-1 text-xs rounded-full ${
                           task.status === "completed"
-                            ? "bg-green-100 text-green-800"
+                            ? "bg-gradient-to-r from-green-100 to-green-200 text-green-600 border border-green-300"
                             : task.status === "in-progress"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-gray-100 text-gray-800"
+                            ? "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-600 border border-blue-300"
+                            : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-600 border border-gray-300"
                         }`}
                       >
                         {task.status}
@@ -1075,7 +1092,7 @@ const CompanyTabs = ({
                         onClick={() => handleEditTask(task)}
                         iconName="Edit"
                         iconPosition="left"
-                        className="h-8 px-2 text-xs"
+                        className="h-8 px-2 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
                       >
                         Edit
                       </Button>
@@ -1138,7 +1155,7 @@ const CompanyTabs = ({
               schedules.map((schedule) => (
                 <div
                   key={schedule._id || schedule.id}
-                  className="p-4 bg-muted/30 rounded-lg"
+                  className="p-4 bg-muted/30 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center space-x-2">
@@ -1148,15 +1165,15 @@ const CompanyTabs = ({
                       <span
                         className={`inline-block px-2 py-1 text-xs rounded-full ${
                           schedule.status === "completed"
-                            ? "bg-green-100 text-green-800"
+                            ? "bg-gradient-to-r from-green-100 to-green-200 text-green-600 border border-green-300"
                             : schedule.status === "cancelled"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-blue-100 text-blue-800"
+                            ? "bg-gradient-to-r from-red-100 to-red-200 text-red-600 border border-red-300"
+                            : "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-600 border border-blue-300"
                         }`}
                       >
                         {schedule.status}
                       </span>
-                      <span className="inline-block px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
+                      <span className="inline-block px-2 py-1 text-xs bg-gradient-to-r from-purple-100 to-purple-200 text-purple-600 border border-purple-300 rounded-full">
                         {schedule.duration} min
                       </span>
                     </div>
@@ -1167,7 +1184,7 @@ const CompanyTabs = ({
                         onClick={() => handleEditSchedule(schedule)}
                         iconName="Edit"
                         iconPosition="left"
-                        className="h-8 px-2 text-xs"
+                        className="h-8 px-2 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
                       >
                         Edit
                       </Button>
@@ -1252,21 +1269,9 @@ const CompanyTabs = ({
                   return (
                     <div
                       key={note._id || note.id}
-                      className="p-4 bg-muted/30 rounded-lg"
+                      className="p-4 bg-muted/30 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow"
                     >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm font-medium text-foreground">
-                            {note.createdBy?.firstName
-                              ? `${note.createdBy.firstName} ${note.createdBy.lastName}`
-                              : "Unknown User"}
-                          </span>
-                          <span className="text-sm text-muted-foreground">
-                            {formatDate(
-                              new Date(note.createdAt || note.timestamp)
-                            )}
-                          </span>
-                        </div>
+                      <div className="flex items-center justify-end mb-3">
                         <div className="flex items-center space-x-2">
                           <Button
                             variant="ghost"
@@ -1274,7 +1279,7 @@ const CompanyTabs = ({
                             onClick={() => handleEditNote(note)}
                             iconName="Edit"
                             iconPosition="left"
-                            className="h-8 px-2 text-xs"
+                            className="h-8 px-2 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
                           >
                             Edit
                           </Button>
@@ -1292,11 +1297,11 @@ const CompanyTabs = ({
                           </Button>
                         </div>
                       </div>
-                      <div className="text-sm text-foreground whitespace-pre-line">
+                      <div className="text-sm text-foreground whitespace-pre-line mt-3">
                         {note.content}
                       </div>
-                      {note.type && (
-                        <div className="mt-2">
+                      <div className="mt-2 flex items-center space-x-3">
+                        {note.type && (
                           <span
                             className={`inline-block px-2 py-1 text-xs rounded-full font-medium capitalize ${getActivityTypeColor(
                               note.type
@@ -1304,8 +1309,21 @@ const CompanyTabs = ({
                           >
                             {note.type}
                           </span>
+                        )}
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm text-muted-foreground">
+                            Created by: {note.createdBy?.firstName
+                              ? `${note.createdBy.firstName} ${note.createdBy.lastName}`
+                              : "Unknown User"}
+                          </span>
+                          <span className="text-sm text-muted-foreground">•</span>
+                          <span className="text-sm text-muted-foreground">
+                            {formatDate(
+                              new Date(note.createdAt || note.timestamp)
+                            )}
+                          </span>
                         </div>
-                      )}
+                      </div>
                     </div>
                   );
                 })}
@@ -1408,7 +1426,7 @@ const CompanyTabs = ({
                 size="sm"
                 onClick={fetchFiles}
                 disabled={filesLoading}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
                 title="Refresh files"
               >
                 <Icon
@@ -1491,7 +1509,7 @@ const CompanyTabs = ({
                         onClick={() => handleFileDownload(file)}
                         iconName="Download"
                         iconPosition="left"
-                        className="h-8 px-2 text-xs"
+                        className="h-8 px-2 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
                         title="Download"
                       />
                       <Button
@@ -1914,7 +1932,7 @@ const CompanyTabs = ({
                   onClick={() => handleFileDownload(previewFile)}
                   iconName="Download"
                   iconPosition="left"
-                  className="text-sm"
+                  className="text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
                 >
                   Download
                 </Button>
@@ -1981,7 +1999,7 @@ const CompanyTabs = ({
                       </p>
                       <Button
                         onClick={() => handleFileDownload(previewFile)}
-                        className="mt-4"
+                        className="mt-4 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
                         iconName="Download"
                         iconPosition="left"
                       >

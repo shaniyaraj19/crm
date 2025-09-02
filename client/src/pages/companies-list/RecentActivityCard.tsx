@@ -5,9 +5,10 @@ import { Activity } from '../../services/activities';
 
 interface RecentActivityCardProps {
   activities: Activity[];
+  onViewAllActivity?: () => void;
 }
 
-const RecentActivityCard = ({ activities }: RecentActivityCardProps) => {
+const RecentActivityCard = ({ activities, onViewAllActivity }: RecentActivityCardProps) => {
   const getActivityIcon = (type: Activity['type']) => {
     switch (type) {
       case 'call':
@@ -65,8 +66,8 @@ const RecentActivityCard = ({ activities }: RecentActivityCardProps) => {
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-medium text-foreground">Recent Activity</h3>
-          <Button variant="ghost" size="sm" iconName="MoreHorizontal">
-          </Button>
+          {/* <Button variant="ghost" size="sm" iconName="MoreHorizontal">
+          </Button> */}
         </div>
       </div>
       
@@ -103,7 +104,11 @@ const RecentActivityCard = ({ activities }: RecentActivityCardProps) => {
             ))}
             
             {activities.length > 5 && (
-              <Button variant="ghost" className="w-full mt-4">
+              <Button 
+                variant="ghost" 
+                className="w-full mt-4"
+                onClick={onViewAllActivity}
+              >
                 View All Activity
                 <Icon name="ArrowRight" size={16} className="ml-2" />
               </Button>

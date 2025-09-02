@@ -19,6 +19,22 @@ const CompanyFieldCustomizer: React.FC<FieldCustomizerProps> = ({
     useFields();
   const [searchTerm, setSearchTerm] = useState("");
   const [draggedField, setDraggedField] = useState<Field | null>(null);
+  const [draggedOverIndex, setDraggedOverIndex] = useState<number | null>(null);
+  const [editingField, setEditingField] = useState<Field | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editForm, setEditForm] = useState({
+    label: "",
+    type: "text" as "text" | "email" | "phone" | "number" | "date" | "select" | "textarea",
+    required: false,
+    options: [] as string[],
+  });
+  const [createForm, setCreateForm] = useState({
+    label: "",
+    type: "text" as "text" | "email" | "phone" | "number" | "date" | "select" | "textarea",
+    required: false,
+    options: [] as string[],
+  });
 
   const moduleFields: Field[] = (fields?.[module] ?? []).sort(
     (a, b) => a.order - b.order
@@ -85,10 +101,49 @@ const CompanyFieldCustomizer: React.FC<FieldCustomizerProps> = ({
     setDraggedField(field);
   };
 
-  const handleDrop = (targetSection: string) => {
-    if (draggedField && !draggedField.visible) {
-      updateField(module, draggedField.id, { visible: true });
+  const handleDragOver = (e: React.DragEvent, index?: number) => {
+    e.preventDefault();
+    setDraggedOverIndex(index ?? null);
+  };
+
+  const handleDragLeave = () => {
+    setDraggedOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetSection: string, targetIndex?: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log("🎯 Drop event triggered:", { draggedField, targetSection, targetIndex });
+    
+    if (draggedField) {
+      if (!draggedField.visible) {
+        // Make hidden field visible
+        console.log("📝 Making hidden field visible:", draggedField.name);
+        updateField(module, draggedField.id, { visible: true });
+      } else {
+        // Reorder existing field
+        console.log("🔄 Reordering field:", draggedField.name);
+        const currentFields = moduleFields.filter(f => f.visible);
+        const draggedIndex = currentFields.findIndex(f => f.id === draggedField.id);
+        
+        console.log("📍 Current positions:", { draggedIndex, targetIndex });
+        
+        if (draggedIndex !== -1 && targetIndex !== undefined && draggedIndex !== targetIndex) {
+          const newFields = [...currentFields];
+          const [movedField] = newFields.splice(draggedIndex, 1);
+          newFields.splice(targetIndex, 0, movedField);
+          
+          console.log("🔄 New field order:", newFields.map(f => f.name));
+          
+          // Update order for all fields
+          newFields.forEach((field, index) => {
+            updateField(module, field.id, { order: index });
+          });
+        }
+      }
       setDraggedField(null);
+      setDraggedOverIndex(null);
     }
   };
 
@@ -97,6 +152,138 @@ const CompanyFieldCustomizer: React.FC<FieldCustomizerProps> = ({
       console.log("🔧 Removing field:", field.name);
       updateField(module, field.id, { visible: false });
       console.log("🔧 Field removed, current fields:", fields);
+    }
+  };
+
+  const handleEditField = (field: Field) => {
+    setEditingField(field);
+    setEditForm({
+      label: field.label,
+      type: field.type,
+      required: field.required,
+      options: field.options || [],
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingField) {
+      updateField(module, editingField.id, {
+        label: editForm.label,
+        type: editForm.type,
+        required: editForm.required,
+        options: editForm.options,
+      });
+      setShowEditModal(false);
+      setEditingField(null);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setShowEditModal(false);
+    setEditingField(null);
+    setEditForm({
+      label: "",
+      type: "text",
+      required: false,
+      options: [],
+    });
+  };
+
+  const addOption = () => {
+    setEditForm({
+      ...editForm,
+      options: [...editForm.options, ""],
+    });
+  };
+
+  const updateOption = (index: number, value: string) => {
+    const newOptions = [...editForm.options];
+    newOptions[index] = value;
+    setEditForm({
+      ...editForm,
+      options: newOptions,
+    });
+  };
+
+  const removeOption = (index: number) => {
+    const newOptions = editForm.options.filter((_, i) => i !== index);
+    setEditForm({
+      ...editForm,
+      options: newOptions,
+    });
+  };
+
+  const handleCreateField = () => {
+    setCreateForm({
+      label: "",
+      type: "text",
+      required: false,
+      options: [],
+    });
+    setShowCreateModal(true);
+  };
+
+  const handleSaveCreate = () => {
+    if (createForm.label) {
+      const customFieldName = `customField${Date.now()}`;
+      console.log("🔧 Adding custom field:", customFieldName);
+      addField(module, {
+        name: customFieldName,
+        label: createForm.label,
+        type: createForm.type,
+        required: createForm.required,
+        visible: true,
+        editable: true,
+        options: createForm.options,
+        isCustom: true,
+      });
+      console.log("🔧 Custom field added, current fields:", fields);
+      setShowCreateModal(false);
+    }
+  };
+
+  const handleCancelCreate = () => {
+    setShowCreateModal(false);
+    setCreateForm({
+      label: "",
+      type: "text",
+      required: false,
+      options: [],
+    });
+  };
+
+  const addCreateOption = () => {
+    setCreateForm({
+      ...createForm,
+      options: [...createForm.options, ""],
+    });
+  };
+
+  const updateCreateOption = (index: number, value: string) => {
+    const newOptions = [...createForm.options];
+    newOptions[index] = value;
+    setCreateForm({
+      ...createForm,
+      options: newOptions,
+    });
+  };
+
+  const removeCreateOption = (index: number) => {
+    const newOptions = createForm.options.filter((_, i) => i !== index);
+    setCreateForm({
+      ...createForm,
+      options: newOptions,
+    });
+  };
+
+  const handleDeleteUnusedField = (field: Field) => {
+    if (field.isCustom) {
+      if (window.confirm(`Are you sure you want to permanently delete the field "${field.label}"? This action cannot be undone.`)) {
+        deleteField(module, field.id);
+      }
+    } else {
+      alert("Default fields cannot be deleted. You can only hide them from view.");
     }
   };
 
@@ -142,21 +329,7 @@ const CompanyFieldCustomizer: React.FC<FieldCustomizerProps> = ({
                   Active Fields
                 </h3>
                 <Button
-                  onClick={() => {
-                    const customFieldName = `customField${Date.now()}`;
-                    console.log("🔧 Adding custom field:", customFieldName);
-                    addField(module, {
-                      name: customFieldName,
-                      label: "New Custom Field",
-                      type: "text",
-                      required: false,
-                      visible: true,
-                      editable: true,
-                      options: [],
-                      isCustom: true,
-                    });
-                    console.log("🔧 Custom field added, current fields:", fields);
-                  }}
+                  onClick={handleCreateField}
                   className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white"
                 >
                   <Icon name="Plus" size={16} />
@@ -171,19 +344,26 @@ const CompanyFieldCustomizer: React.FC<FieldCustomizerProps> = ({
                     <div
                       key={sectionName}
                       className="mb-8"
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={() => handleDrop(sectionName)}
+                      onDragOver={(e) => handleDragOver(e)}
+                      onDrop={(e) => handleDrop(e, sectionName)}
                     >
                       <h4 className="text-md font-medium text-gray-900 mb-4">
                         {sectionName}
                       </h4>
                       <div className="space-y-2">
-                        {sectionFields.map((field) => (
+                        {sectionFields.map((field, index) => (
                           <div
                             key={field.id}
-                            className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+                            className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
+                              draggedOverIndex === index
+                                ? "bg-blue-100 border-blue-300"
+                                : "bg-gray-50 border-gray-200 hover:bg-gray-100"
+                            } ${draggedField?.id === field.id ? "opacity-50" : ""}`}
                             draggable
                             onDragStart={() => handleDragStart(field)}
+                            onDragOver={(e) => handleDragOver(e, index)}
+                            onDragLeave={handleDragLeave}
+                            onDrop={(e) => handleDrop(e, sectionName, index)}
                           >
                             <div className="flex items-center space-x-3">
                               <Icon
@@ -200,32 +380,26 @@ const CompanyFieldCustomizer: React.FC<FieldCustomizerProps> = ({
                                 </div>
                               </div>
                             </div>
-                            <input
-                              type="text"
-                              value={field.label}
-                              onChange={(e) =>
-                                updateField(module, field.id, {
-                                  label: e.target.value,
-                                })
-                              }
-                              className="font-medium text-gray-900 bg-transparent border-b border-dashed border-transparent focus:border-gray-400 focus:outline-none"
-                            />
-
                             <div className="flex items-center space-x-2">
-                              {!field.required && (
-                                <button
-                                  onClick={() => handleRemoveField(field)}
-                                  className="p-1 hover:bg-red-100 rounded text-red-600 transition-colors"
-                                  title="Remove field"
-                                >
-                                  <Icon name="X" size={16} />
-                                </button>
-                              )}
                               {field.required && (
                                 <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
-                                  Required
+                               Required
                                 </span>
                               )}
+                              <button
+                                onClick={() => handleEditField(field)}
+                                className="p-1 hover:bg-blue-100 rounded text-blue-600 transition-colors"
+                                title="Edit field"
+                              >
+                                <Icon name="Edit" size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleRemoveField(field)}
+                                className="p-1 hover:bg-red-100 rounded text-red-600 transition-colors"
+                                title="Remove field"
+                              >
+                                <Icon name="Trash2" size={16} />
+                              </button>
                             </div>
                           </div>
                         ))}
@@ -266,19 +440,29 @@ const CompanyFieldCustomizer: React.FC<FieldCustomizerProps> = ({
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4">
+            <div 
+              className="flex-1 overflow-y-auto p-4"
+              onDragOver={(e) => handleDragOver(e)}
+              onDrop={(e) => handleDrop(e, "unused")}
+            >
               <div className="space-y-2">
                 {filteredHiddenFields.map((field) => (
                   <div
                     key={field.id}
-                    className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                    className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
+                      draggedField?.id === field.id 
+                        ? "opacity-50 bg-blue-50 border-blue-300" 
+                        : "bg-white border-gray-200 hover:bg-blue-50 hover:border-blue-300"
+                    }`}
                     draggable
                     onDragStart={() => handleDragStart(field)}
-                    onClick={() =>
-                      updateField(module, field.id, { visible: true })
-                    }
                   >
-                    <div className="flex items-center space-x-3">
+                    <div 
+                      className="flex items-center space-x-3 flex-1 cursor-pointer"
+                      onClick={() =>
+                        updateField(module, field.id, { visible: true })
+                      }
+                    >
                       <Icon
                         name="GripVertical"
                         size={16}
@@ -292,6 +476,18 @@ const CompanyFieldCustomizer: React.FC<FieldCustomizerProps> = ({
                           {getFieldTypeLabel(field.type)}
                         </div>
                       </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteUnusedField(field);
+                        }}
+                        className="p-1 hover:bg-red-100 rounded text-red-600 transition-colors"
+                        title={field.isCustom ? "Delete field permanently" : "Default fields cannot be deleted"}
+                      >
+                        <Icon name="Trash2" size={16} />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -338,6 +534,246 @@ const CompanyFieldCustomizer: React.FC<FieldCustomizerProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Edit Field Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[102] flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4">Edit Field</h3>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSaveEdit();
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Field Label
+                </label>
+                <input
+                  type="text"
+                  value={editForm.label}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, label: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                 
+                  required
+                />
+                
+              </div>
+
+
+
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Field Type
+                </label>
+                <select
+                  value={editForm.type}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, type: e.target.value as any })
+                  }
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="text">Single Line</option>
+                  <option value="email">Email (Unique)</option>
+                  <option value="phone">Phone</option>
+                  <option value="number">Number</option>
+                  <option value="date">Date</option>
+                  <option value="select">Lookup</option>
+                  <option value="textarea">Multi-line (Large)</option>
+                </select>
+              </div>
+
+              {editForm.type === "select" && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Options
+                  </label>
+                  <div className="space-y-2">
+                    {editForm.options.map((option, index) => (
+                      <div key={index} className="flex items-center space-x-2">
+                        <input
+                          type="text"
+                          value={option}
+                          onChange={(e) => updateOption(index, e.target.value)}
+                          className="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Option value"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeOption(index)}
+                          className="p-2 text-red-600 hover:bg-red-100 rounded"
+                        >
+                          <Icon name="Trash2" size={16} />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={addOption}
+                      className="flex items-center space-x-2 text-blue-600 hover:text-blue-700"
+                    >
+                      <Icon name="Plus" size={16} />
+                      <span>Add Option</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="required"
+                  checked={editForm.required}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, required: e.target.checked })
+                  }
+                  className="rounded"
+                />
+                <label htmlFor="required" className="text-sm font-medium">
+                  Required Field
+                </label>
+              </div>
+
+              <div className="flex space-x-3">
+                <Button type="submit" className="flex-1">
+                  Save Changes
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCancelEdit}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create Custom Field Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[102] flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4">Create Custom Field</h3>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSaveCreate();
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Field Label
+                </label>
+                <input
+                  type="text"
+                  value={createForm.label}
+                  onChange={(e) =>
+                    setCreateForm({ ...createForm, label: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+              </div>
+
+
+
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Field Type
+                </label>
+                <select
+                  value={createForm.type}
+                  onChange={(e) =>
+                    setCreateForm({ ...createForm, type: e.target.value as any })
+                  }
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="text">Single Line</option>
+                  <option value="email">Email (Unique)</option>
+                  <option value="phone">Phone</option>
+                  <option value="number">Number</option>
+                  <option value="date">Date</option>
+                  <option value="select">Lookup</option>
+                  <option value="textarea">Multi-line (Large)</option>
+                </select>
+              </div>
+
+              {createForm.type === "select" && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Options
+                  </label>
+                  <div className="space-y-2">
+                    {createForm.options.map((option, index) => (
+                      <div key={index} className="flex items-center space-x-2">
+                        <input
+                          type="text"
+                          value={option}
+                          onChange={(e) => updateCreateOption(index, e.target.value)}
+                          className="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Option value"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeCreateOption(index)}
+                          className="p-2 text-red-600 hover:bg-red-100 rounded"
+                        >
+                          <Icon name="Trash2" size={16} />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={addCreateOption}
+                      className="flex items-center space-x-2 text-blue-600 hover:text-blue-700"
+                    >
+                      <Icon name="Plus" size={16} />
+                      <span>Add Option</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="createRequired"
+                  checked={createForm.required}
+                  onChange={(e) =>
+                    setCreateForm({ ...createForm, required: e.target.checked })
+                  }
+                  className="rounded"
+                />
+                <label htmlFor="createRequired" className="text-sm font-medium">
+                  Required Field
+                </label>
+              </div>
+
+              <div className="flex space-x-3">
+                <Button type="submit" className="flex-1">
+                  Create Field
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCancelCreate}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 };

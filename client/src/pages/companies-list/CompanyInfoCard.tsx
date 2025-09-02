@@ -165,7 +165,7 @@ const CompanyInfoCard = ({ company, onSave }: { company: any; onSave: (company: 
       <div className="flex items-center justify-between p-6 border-b border-border">
         <div className="flex items-center space-x-4">
           <div className="relative">
-            <div className="w-16 h-16 bg-primary rounded-lg flex items-center justify-center text-primary-foreground text-xl font-semibold">
+            <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xl font-semibold">
               {(company?.name?.charAt(0) || 'C')}
             </div>
             <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-card ${
