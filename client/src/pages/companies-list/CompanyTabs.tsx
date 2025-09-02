@@ -42,17 +42,15 @@ const CompanyTabs = ({
   company,
   deals = [],
   activities = [],
-  onAddTask,
   taskRefreshTrigger,
-  onAddSchedule,
   scheduleRefreshTrigger,
-  onAddNote,
   noteRefreshTrigger,
   onEditDeal,
   onDeleteDeal,
 }: CompanyTabsProps) => {
   const [activeTab, setActiveTab] = useState("activities");
   const [newNote, setNewNote] = useState("");
+  const [newNoteType, setNewNoteType] = useState("general");
   const [notes, setNotes] = useState<any[]>([]);
   const [notesLoading, setNotesLoading] = useState(false);
 
@@ -143,7 +141,6 @@ const CompanyTabs = ({
         setNotes(responseData.data || []);
       }
     } catch (error) {
-      // Error fetching notes
     } finally {
       setNotesLoading(false);
     }
@@ -171,7 +168,6 @@ const CompanyTabs = ({
         setTasks(responseData.data || []);
       }
     } catch (error) {
-      // Error fetching tasks
     } finally {
       setTasksLoading(false);
     }
@@ -199,7 +195,6 @@ const CompanyTabs = ({
         setSchedules(responseData.data || []);
       }
     } catch (error) {
-      // Error fetching schedules
     } finally {
       setSchedulesLoading(false);
     }
@@ -243,14 +238,12 @@ const CompanyTabs = ({
     }
   }, [scheduleRefreshTrigger]);
 
-  // Listen for note refresh trigger from parent
   useEffect(() => {
     if (noteRefreshTrigger && noteRefreshTrigger > 0) {
       fetchNotes();
     }
   }, [noteRefreshTrigger]);
 
-  // Function to fetch files from the API
   const fetchFiles = async () => {
     if (!company?.id && !company?._id) return;
 
@@ -262,7 +255,6 @@ const CompanyTabs = ({
 
       setFiles(response.data.files || []);
     } catch (error) {
-      // Error fetching files
     } finally {
       setFilesLoading(false);
     }
@@ -281,32 +273,65 @@ const CompanyTabs = ({
     }
   };
 
-  const getFileTypeColor = (type: string) => {
-    switch (type) {
-      case "pdf":
-        return "bg-red-100 text-red-800";
-      case "docx":
-      case "doc":
-        return "bg-blue-100 text-blue-800";
-      case "xlsx":
-      case "xls":
-        return "bg-green-100 text-green-800";
-      case "pptx":
-      case "ppt":
-        return "bg-orange-100 text-orange-800";
-      case "jpg":
-      case "jpeg":
-      case "png":
-      case "gif":
+  const getFileTypeColor = (type: string, filename?: string) => {
+    if (!type) return "bg-gray-100 text-gray-800";
+
+    const fileType = type.toLowerCase().trim();
+
+    if (filename) {
+      const extension = filename.split(".").pop()?.toLowerCase();
+      switch (extension) {
+        case "pdf":
+          return "bg-red-100 text-red-800";
+        case "docx":
+        case "doc":
+          return "bg-blue-100 text-blue-800";
+        case "xlsx":
+        case "xls":
+          return "bg-green-100 text-green-800";
+        case "pptx":
+        case "ppt":
+          return "bg-orange-100 text-orange-800";
+        case "jpg":
+        case "jpeg":
+        case "png":
+        case "gif":
+        case "webp":
+        case "svg":
+          return "bg-purple-100 text-purple-800";
+        case "txt":
+        case "md":
+          return "bg-gray-100 text-gray-800";
+      }
+    }
+    switch (fileType) {
+      case "image":
         return "bg-purple-100 text-purple-800";
-      case "mp4":
-      case "avi":
-      case "mov":
+      case "document":
+        return "bg-blue-100 text-blue-800";
+      case "video":
         return "bg-indigo-100 text-indigo-800";
-      case "mp3":
-      case "wav":
-      case "aac":
+      case "audio":
         return "bg-pink-100 text-pink-800";
+      case "archive":
+        return "bg-yellow-100 text-yellow-800";
+      case "text":
+        return "bg-gray-100 text-gray-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getActivityTypeColor = (type: string) => {
+    switch (type) {
+      case "general":
+        return "bg-gray-100 text-gray-800";
+      case "meeting":
+        return "bg-blue-100 text-blue-800";
+      case "call":
+        return "bg-green-100 text-green-800";
+      case "email":
+        return "bg-purple-100 text-purple-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -352,7 +377,6 @@ const CompanyTabs = ({
     try {
       const blob = await downloadFile(file._id);
 
-      // Create download link
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -434,11 +458,12 @@ const CompanyTabs = ({
         const response = await createNote({
           content: newNote,
           companyId: company.id || company._id,
-          type: "general",
+          type: newNoteType,
         });
 
         if (response && typeof response === "object" && "_id" in response) {
           setNewNote("");
+          setNewNoteType("general");
           await fetchNotes();
         }
       } catch (error) {
@@ -455,9 +480,7 @@ const CompanyTabs = ({
         type: note.type,
       });
       setShowEditModal(true);
-    } catch (error) {
-      // Error opening edit modal
-    }
+    } catch (error) {}
   };
 
   const handleDeleteNote = async (noteId: string) => {
@@ -572,9 +595,7 @@ const CompanyTabs = ({
         status: task.status,
       });
       setShowEditTaskModal(true);
-    } catch (error) {
-      // Error opening edit task modal
-    }
+    } catch (error) {}
   };
 
   const handleDeleteTask = async (taskId: string) => {
@@ -713,9 +734,7 @@ const CompanyTabs = ({
         status: schedule.status,
       });
       setShowEditScheduleModal(true);
-    } catch (error) {
-      // Error opening edit schedule modal
-    }
+    } catch (error) {}
   };
 
   const handleDeleteSchedule = async (scheduleId: string) => {
@@ -867,6 +886,15 @@ const CompanyTabs = ({
                   <p className="text-sm text-muted-foreground mt-1">
                     {activity.description}
                   </p>
+                  <div className="flex items-center space-x-2 mt-2">
+                    <span
+                      className={`inline-block px-2 py-1 text-xs rounded-full font-medium capitalize ${getActivityTypeColor(
+                        activity.type
+                      )}`}
+                    >
+                      {activity.type}
+                    </span>
+                  </div>
                   <div className="flex items-center space-x-4 mt-2 text-xs text-muted-foreground">
                     <span>
                       {typeof activity.createdBy === "object" &&
@@ -1269,7 +1297,11 @@ const CompanyTabs = ({
                       </div>
                       {note.type && (
                         <div className="mt-2">
-                          <span className="inline-block px-2 py-1 text-xs bg-primary/10 text-primary rounded-full">
+                          <span
+                            className={`inline-block px-2 py-1 text-xs rounded-full font-medium capitalize ${getActivityTypeColor(
+                              note.type
+                            )}`}
+                          >
                             {note.type}
                           </span>
                         </div>
@@ -1428,10 +1460,12 @@ const CompanyTabs = ({
                         </button>
                         <span
                           className={`inline-block px-2 py-1 text-xs rounded-full ${getFileTypeColor(
-                            file.fileType
+                            file.fileType,
+                            file.originalName
                           )}`}
                         >
-                          {file.fileType.toUpperCase()}
+                          {file.originalName.split(".").pop()?.toUpperCase() ||
+                            file.fileType.toUpperCase()}
                         </span>
                       </div>
                       <div className="flex items-center space-x-2 text-sm text-muted-foreground">
@@ -1531,11 +1565,11 @@ const CompanyTabs = ({
                   onChange={(e) =>
                     setEditForm({ ...editForm, type: e.target.value as any })
                   }
-                  className="w-full px-3 py-2 border rounded-md"
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="general">General</option>
-                  <option value="meeting">Meeting</option>
-                  <option value="call">Call</option>
+                  <option value="general"> General</option>
+                  <option value="meeting"> Meeting</option>
+                  <option value="call"> Call</option>
                   <option value="email">Email</option>
                 </select>
               </div>
@@ -1868,7 +1902,7 @@ const CompanyTabs = ({
       {/* File Preview Modal */}
       {showFilePreview && previewFile && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl max-h-[90vh] w-full mx-4 overflow-hidden">
+          <div className="bg-white rounded-lg shadow-xl w-[60vw] h-[85vh] mx-4 overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b">
               <h3 className="text-lg font-semibold text-gray-900">
                 {previewFile.originalName}
@@ -1895,7 +1929,7 @@ const CompanyTabs = ({
                 </Button>
               </div>
             </div>
-            <div className="p-4 overflow-auto max-h-[calc(90vh-80px)]">
+            <div className="p-4 overflow-auto h-[calc(85vh-80px)]">
               {previewLoading ? (
                 <div className="flex items-center justify-center h-64">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -1904,15 +1938,17 @@ const CompanyTabs = ({
               ) : previewBlobUrl ? (
                 <div className="w-full h-full">
                   {previewFile.mimetype.startsWith("image/") ? (
-                    <img
-                      src={previewBlobUrl}
-                      alt={previewFile.originalName}
-                      className="max-w-full max-h-full object-contain mx-auto"
-                    />
+                    <div className="flex items-center justify-center h-full w-full">
+                      <img
+                        src={previewBlobUrl}
+                        alt={previewFile.originalName}
+                        className="max-w-full max-h-full object-contain"
+                      />
+                    </div>
                   ) : previewFile.mimetype === "application/pdf" ? (
                     <iframe
                       src={previewBlobUrl}
-                      className="w-full h-96 border-0"
+                      className="w-full h-[calc(85vh-120px)] border-0"
                       title={previewFile.originalName}
                     />
                   ) : previewFile.mimetype.startsWith("video/") ? (
