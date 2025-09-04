@@ -43,6 +43,13 @@ export class AuthController {
       const verificationToken = user.generateEmailVerificationToken();
       
       await user.save();
+      
+      // Set organizationId to user's own _id if not provided (for single-user setups)
+      if (!user.organizationId) {
+        user.organizationId = user._id.toString();
+        logger.info(`Setting organizationId for new user ${user.email} to their own _id`);
+        await user.save();
+      }
 
       // Generate JWT tokens
       const tokens = JWTService.generateTokenPair(user);
@@ -90,6 +97,12 @@ export class AuthController {
         throw new AuthenticationError('Invalid email or password');
       }
 
+      // Set organizationId to user's own _id if not already set (for single-user setups)
+      if (!user.organizationId) {
+        user.organizationId = user._id.toString();
+        logger.info(`Setting organizationId for user ${user.email} to their own _id`);
+      }
+      
       // Update last login
       user.lastLogin = new Date();
       await user.save();
@@ -130,6 +143,13 @@ export class AuthController {
         throw new AuthenticationError('User not found or inactive');
       }
 
+      // Set organizationId to user's own _id if not already set (for single-user setups)
+      if (!user.organizationId) {
+        user.organizationId = user._id.toString();
+        logger.info(`Setting organizationId for user ${user.email} to their own _id`);
+        await user.save();
+      }
+
       // Generate new tokens
       const tokens = JWTService.generateTokenPair(user);
 
@@ -153,6 +173,13 @@ export class AuthController {
       const user = await User.findById(req.user?.userId);
       if (!user) {
         throw new NotFoundError('User');
+      }
+
+      // Set organizationId to user's own _id if not already set (for single-user setups)
+      if (!user.organizationId) {
+        user.organizationId = user._id.toString();
+        logger.info(`Setting organizationId for user ${user.email} to their own _id`);
+        await user.save();
       }
 
       const response: ApiResponse = {

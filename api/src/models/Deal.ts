@@ -397,7 +397,7 @@ dealSchema.methods.initializeStageHistory = async function() {
     const Pipeline = this.model('Pipeline');
     const pipeline = await Pipeline.findById(this.pipelineId).lean() as IPipeline | null;
     if (pipeline && pipeline.stages) {
-      const stage = pipeline.stages.find((s) => s._id?.toString() === this.stageId);
+      const stage = pipeline.stages.find((s) => s.name === this.stageId);
       const stageName = stage?.name || 'Unknown Stage';
       
       this.stageHistory.push({
@@ -438,7 +438,7 @@ dealSchema.methods.fixStageHistory = async function() {
       for (let i = 0; i < this.stageHistory.length; i++) {
         const historyEntry = this.stageHistory[i];
         if (!historyEntry.stageName || historyEntry.stageName === '') {
-          const stage = pipeline.stages.find((s) => s._id?.toString() === historyEntry.stageId);
+          const stage = pipeline.stages.find((s) => s.name === historyEntry.stageId);
           historyEntry.stageName = stage?.name || 'Unknown Stage';
           console.log(`Fixed stage history entry ${i}: stageName = ${historyEntry.stageName}`);
         }

@@ -1,69 +1,69 @@
-import React, { useState, useEffect } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
-
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../../services/api";
-import {
-  getDealsByCompany,
-  transformDealForFrontend,
-  CreateDealRequest,
-  createDeal,
-} from "../../services/deals";
-import {
-  getActivities,
-  createActivity,
-  transformActivityForFrontend,
-  Activity,
-  CreateActivityRequest,
-} from "../../services/activities";
-
 import Header from "../../components/ui/Header";
 import Sidebar from "../../components/ui/Sidebar";
 import Breadcrumbs from "../../components/ui/Breadcrumbs";
-import Button from "../../components/ui/Button";
-import Icon from "../../components/AppIcon";
-
+import DealManager from "../../components/DealManager";
+import { Deal, getDealsByCompany, transformDealForFrontend } from "../../services/deals";
 import CompanyInfoCard from "./CompanyInfoCard";
 import QuickActionsPanel from "./QuickActionsPanel";
 import RelatedDealsCard from "./RelatedDealsCard";
 import RecentActivityCard from "./RecentActivityCard";
-import CompanyTabs from "./CompanyTabs";
+import CompanyTabs from "./CompanyTabs.tsx";
 
-const CompanyDetails: React.FC = () => {
-  const { id } = useParams();
+const CompanyDetails = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-
-  // State
-
+  const { id } = useParams();
   const [company, setCompany] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [deals, setDeals] = useState<Deal[]>([]); // Empty array for manual deal insertion
+  const [globalActivities, setGlobalActivities] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState('activities'); // Add state to track active tab
+  const [dealModalTrigger, setDealModalTrigger] = useState(0);
+  const [isUpdatingCompany, setIsUpdatingCompany] = useState(false);
 
-  const [deals, setDeals] = useState<any[]>([]);
 
-  const [taskRefreshTrigger, setTaskRefreshTrigger] = useState(0);
-  const [scheduleRefreshTrigger, setScheduleRefreshTrigger] = useState(0);
-  const [noteRefreshTrigger, setNoteRefreshTrigger] = useState(0);
 
-  // Activities state
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [isLoadingActivities, setIsLoadingActivities] = useState(false);
+  // Load deals for this company
+  const loadCompanyDeals = useCallback(async () => {
+    if (!id) return;
+    console.log('🔄 Loading deals for company:', id);
+    const response = await getDealsByCompany(id);
 
-  // Tab navigation state
-  const [activeTab, setActiveTab] = useState("activities");
+    console.log('📊 Deals response:', response);
 
-  // Deal modal state
-  const [showDealModal, setShowDealModal] = useState(false);
-  const [dealForm, setDealForm] = useState({
-    name: "",
-    value: "",
-    stageId: "",
-    probability: 25,
-    closeDate: "",
-    description: "",
-  });
-  const [editingDeal, setEditingDeal] = useState<any>(null);
-  const [pipelineStages, setPipelineStages] = useState<any[]>([]);
-  const [loadingPipelineStages, setLoadingPipelineStages] = useState(false);
+    if (response.success) {
+      const dealsData = response.data?.deals || [];
+      console.log('📋 Raw deals data:', dealsData);
+      const transformedDeals = dealsData.map((deal: any) => transformDealForFrontend(deal));
+      console.log('🔄 Transformed deals:', transformedDeals);
+      setDeals(transformedDeals);
+      console.log('✅ Successfully loaded and set deals:', transformedDeals.length);
+    } else {
+      console.error('❌ Failed to load deals:', response);
+    }
+  }, [id]);
+
+  // Load activities for the current company
+  const loadCompanyActivities = useCallback(async () => {
+    if (!id) return;
+    try {
+      const response = await api.get<any>(`/activities?companyId=${id}&limit=50`);
+      if (response.success) {
+        const activitiesData = (response.data as any)?.activities || [];
+        setGlobalActivities(activitiesData);
+      }
+    } catch (error) {
+      console.error('Error loading company activities:', error);
+    }
+  }, [id]);
+
+  // Load company activities on component mount
+  useEffect(() => {
+    loadCompanyActivities();
+  }, [loadCompanyActivities]);
 
   // Helpers
 
@@ -92,570 +92,254 @@ const CompanyDetails: React.FC = () => {
       owner: c.createdBy || "Unassigned",
     };
 
-  // Loaders
-
-  const loadCompany = async () => {
+  // ✅ Refresh company (depends on id only)
+  const refreshCompany = useCallback(async () => {
+    if (!id || isUpdatingCompany) {
+      console.log('🔄 Skipping company refresh - id:', id, 'isUpdatingCompany:', isUpdatingCompany);
+      return;
+    }
     try {
-      setLoading(true);
-
-      const stateCompany = (location as any)?.state?.company;
-      if (stateCompany) {
-        setCompany(normalizeCompany(stateCompany));
-        return;
+      console.log('🔄 Refreshing company data...');
+      const response = await api.get<any>(`/companies/${id}`);
+      if (response.success) {
+        const c = response.data?.company || response.data;
+        const normalizedCompany = normalizeCompany(c);
+        console.log('🔄 Refreshed company data:', normalizedCompany);
+        console.log('🔄 Company ID in normalized data:', normalizedCompany?.id);
+        
+        // Only update if the data has actually changed
+        setCompany((prev: any) => {
+          if (!prev) return normalizedCompany;
+          
+          // Check if the key fields have changed
+          const hasChanged = 
+            prev.name !== normalizedCompany.name ||
+            prev.industry !== normalizedCompany.industry ||
+            prev.status !== normalizedCompany.status ||
+            prev.id !== normalizedCompany.id;
+            
+          if (hasChanged) {
+            console.log('🔄 Company data changed, updating state');
+            return normalizedCompany;
+          } else {
+            console.log('🔄 Company data unchanged, keeping current state');
+            return prev;
+          }
+        });
+        
+        // Load deals and activities for this company
+        await loadCompanyDeals();
+        await loadCompanyActivities();
       }
-
-      if (id) {
-        const response = await api.get(`/companies/${id}`);
-        if (response.success) {
-          const c = (response.data as any)?.company || response.data;
-          setCompany(normalizeCompany(c));
-        }
-      }
-    } catch {
-      // silent fail
+    } catch (error) {
+      console.error('Error refreshing company:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const loadActivities = async () => {
-    if (isLoadingActivities) return;
-    const companyId = company?.id || company?._id;
-    if (!companyId) return;
-
-    try {
-      setIsLoadingActivities(true);
-
-      const response = await getActivities({ companyId, limit: 50 });
-      if (response.success && response.data?.activities) {
-        setActivities(
-          response.data.activities.map(transformActivityForFrontend)
-        );
-      } else {
-        setActivities([]);
-      }
-    } catch (error) {
-      setActivities([]);
-    } finally {
-      setIsLoadingActivities(false);
-    }
-  };
-
-  const loadDeals = async () => {
-    const companyId = company?.id || company?._id;
-    if (!companyId) return;
-
-    try {
-      const response = await getDealsByCompany(companyId);
-
-      if (response.success && response.data?.deals) {
-        const transformedDeals = response.data.deals.map(
-          transformDealForFrontend
-        );
-        setDeals(transformedDeals);
-      } else {
-        setDeals([]);
-      }
-    } catch (error) {
-      setDeals([]);
-    }
-  };
-
-  // Handlers (Deals)
-
-  const handleShowDealModal = async () => {
-    setEditingDeal(null);
-    setDealForm({
-      name: "",
-      value: "",
-      stageId: "",
-      probability: 25,
-      closeDate: "",
-      description: "",
-    });
-
-    // Load pipeline stages first
-    setLoadingPipelineStages(true);
-    try {
-      const { getDefaultPipeline } = await import("../../services/deals");
-      const defaultPipeline = await getDefaultPipeline();
-      if (defaultPipeline && defaultPipeline.stages) {
-        setPipelineStages(defaultPipeline.stages);
-        // Set default stage to first stage if available
-        if (defaultPipeline.stages.length > 0) {
-          const firstStage = defaultPipeline.stages[0];
-          setDealForm((prev) => ({
-            ...prev,
-            stageId: firstStage._id,
-            probability: firstStage.probability,
-          }));
-        }
-      } else {
-        alert("No pipeline stages available. Please create a pipeline first.");
-        return;
-      }
-    } catch (error) {
-      alert("Failed to load pipeline stages. Please try again.");
-      return;
-    } finally {
-      setLoadingPipelineStages(false);
-    }
-
-    setShowDealModal(true);
-  };
-
-  const handleAddDeal = async (newDeal: any) => {
-    try {
-      const companyId = company?.id || company?._id;
-      if (!companyId) {
-        alert("Company ID not found. Please refresh the page and try again.");
-        return;
-      }
-
-      const dealData: CreateDealRequest = {
-        title: newDeal.name,
-        value: newDeal.value,
-        stageId: newDeal.stageId,
-        probability: newDeal.probability,
-        expectedCloseDate: newDeal.closeDate,
-        description: newDeal.description,
-        companyId,
-      };
-
-      const response = await createDeal(dealData);
-
-      // Immediately update the UI
-      await loadDeals();
-      setShowDealModal(false);
-
-      // Add activity for deal creation with the created deal data
-      if (response.success && response.data?.deal) {
-        const createdDeal = response.data.deal;
-        handleDealActivity({
-          _id: createdDeal._id,
-          name: createdDeal.title,
-          value: createdDeal.value,
-          stageId: createdDeal.stageId,
-        });
-      } else if (response.success && response.data) {
-        // Try alternative response structure
-        const createdDeal = response.data as any;
-        handleDealActivity({
-          _id: createdDeal._id,
-          name: createdDeal.title,
-          value: createdDeal.value,
-          stageId: createdDeal.stageId,
-        });
-      }
-
-      // Show success message
-      alert("Deal created successfully!");
-    } catch (error: any) {
-      let msg = "Failed to create deal. Please try again.";
-      if (error.message?.includes("No pipelines available")) {
-        msg = "No sales pipeline found. Please create a pipeline first.";
-      } else if (error.message?.includes("Pipeline and stage information")) {
-        msg = "Pipeline configuration error. Please contact support.";
-      } else if (error.message?.includes("Failed to fetch pipelines")) {
-        msg = "Network error. Please check your connection.";
-      } else if (error.message) {
-        msg = error.message;
-      }
-      alert(msg);
-    }
-  };
-
-  const handleShowEditDeal = async (deal: any) => {
-    setEditingDeal(deal);
-    setDealForm({
-      name: deal.name,
-      value: deal.value.toString(),
-      stageId: deal.stageId || deal.stage,
-      probability: deal.probability || 25,
-      closeDate: deal.closeDate,
-      description: deal.description || "",
-    });
-
-    // Load pipeline stages
-    setLoadingPipelineStages(true);
-    try {
-      const { getDefaultPipeline } = await import("../../services/deals");
-      const defaultPipeline = await getDefaultPipeline();
-      if (defaultPipeline && defaultPipeline.stages) {
-        setPipelineStages(defaultPipeline.stages);
-      } else {
-        alert("No pipeline stages available. Please create a pipeline first.");
-        return;
-      }
-    } catch (error) {
-      alert("Failed to load pipeline stages. Please try again.");
-      return;
-    } finally {
-      setLoadingPipelineStages(false);
-    }
-
-    setShowDealModal(true);
-  };
-
-  const handleEditDeal = async (updatedDeal: any) => {
-    try {
-      const objectIdRegex = /^[0-9a-fA-F]{24}$/;
-      const companyId = company?.id || company?._id;
-
-      if (!companyId || !objectIdRegex.test(companyId)) {
-        alert("Invalid company ID format.");
-        return;
-      }
-
-      const dealId = updatedDeal._id || updatedDeal.id;
-      if (!objectIdRegex.test(dealId)) {
-        alert("Invalid deal ID format.");
-        return;
-      }
-
-      if (!deals.some((d) => d.id === dealId || d._id === dealId)) {
-        alert("Deal not found. Please refresh.");
-        return;
-      }
-
-      const dealData: any = {
-        title: updatedDeal.name,
-        value: updatedDeal.value,
-        stageId: updatedDeal.stageId,
-        probability: updatedDeal.probability,
-        description: updatedDeal.description,
-        companyId,
-      };
-
-      if (updatedDeal.closeDate) {
-        const date = new Date(updatedDeal.closeDate);
-        if (!isNaN(date.getTime())) {
-          dealData.expectedCloseDate = date.toISOString();
-        }
-      }
-
-      // Use the service function instead of raw fetch
-      const { updateDeal } = await import("../../services/deals");
-      await updateDeal(dealId, dealData);
-
-      // Immediately update the UI
-      await loadDeals();
-      setShowDealModal(false);
-
-      // Add activity for deal editing
-      handleDealEditActivity(updatedDeal);
-
-      alert("Deal updated successfully!");
-    } catch (error: any) {
-      alert(`Failed to update deal: ${error.message || "Unknown error"}`);
-    }
-  };
-
-  const handleDeleteDeal = async (dealId: string) => {
-    try {
-      // First, get the deal info to create activity before deletion
-      const { getDeals } = await import("../../services/deals");
-      const allDealsResponse = await getDeals();
-      let dealInfo = null;
-
-      if (allDealsResponse.success && allDealsResponse.data?.deals) {
-        dealInfo = allDealsResponse.data.deals.find(
-          (deal: any) => deal._id === dealId || deal.id === dealId
-        );
-      }
-
-      // Use the service function instead of raw fetch
-      const { deleteDeal } = await import("../../services/deals");
-      await deleteDeal(dealId);
-
-      // Immediately update the UI
-      await loadDeals();
-
-      // Add activity for deal deletion
-      if (dealInfo) {
-        handleDealDeleteActivity(dealId, dealInfo.title, dealInfo.value);
-      }
-
-      alert("Deal deleted successfully!");
-    } catch (error: any) {
-      alert(`Failed to delete deal: ${error.message || "Unknown error"}`);
-    }
-  };
-
-  // Handlers (Company + Tabs)
-
-  const handleSaveCompany = (updated: any) => {
-    setCompany(updated);
-    loadCompany();
-  };
-
-  const handleAddNote = () => setNoteRefreshTrigger((v) => v + 1);
-  const handleAddTask = () => setTaskRefreshTrigger((v) => v + 1);
-  const handleAddSchedule = () => setScheduleRefreshTrigger((v) => v + 1);
-
-  // Activity handlers
-
-  const handleCallActivity = async () => {
-    try {
-      const companyId = company?.id || company?._id;
-      if (!companyId) return;
-
-      const activityData: CreateActivityRequest = {
-        title: `Call made to ${company?.name}`,
-        description: `Outbound call completed with ${company?.name}`,
-        type: "call",
-        status: "completed",
-        companyId,
-        duration: 15,
-      };
-
-      await createActivity(activityData);
-      await loadActivities(); // Reload activities from backend
-    } catch (error) {
-      // Error creating call activity
-    }
-  };
-
-  const handleEmailActivity = async () => {
-    try {
-      const companyId = company?.id || company?._id;
-      if (!companyId) return;
-
-      const activityData: CreateActivityRequest = {
-        title: `Email sent to ${company?.name}`,
-        description: `Email sent to ${company?.email || "company contact"}`,
-        type: "email",
-        status: "completed",
-        companyId,
-        duration: 5,
-      };
-
-      await createActivity(activityData);
-      await loadActivities(); // Reload activities from backend
-    } catch (error) {
-      // Error creating email activity
-    }
-  };
-
-  const handleMeetingActivity = async (meetingData: any) => {
-    try {
-      const companyId = company?.id || company?._id;
-      if (!companyId) return;
-
-      const activityData: CreateActivityRequest = {
-        title: `Meeting scheduled: ${meetingData.title}`,
-        description: `Meeting scheduled for ${meetingData.date} at ${meetingData.time} with ${meetingData.attendees}`,
-        type: "meeting",
-        status: "completed",
-        companyId,
-        duration: meetingData.duration || 60,
-        dueDate: meetingData.date,
-      };
-
-      await createActivity(activityData);
-      await loadActivities(); // Reload activities from backend
-    } catch (error) {
-    }
-  };
-
-  const handleNoteActivity = async (noteData: any) => {
-    try {
-      const companyId = company?.id || company?._id;
-      if (!companyId) return;
-
-      const activityData: CreateActivityRequest = {
-        title: `Note added: ${noteData.type}`,
-        description:
-          noteData.content?.substring(0, 100) +
-          (noteData.content?.length > 100 ? "..." : ""),
-        type: "note",
-        status: "completed",
-        companyId,
-        notes: noteData.content,
-      };
-
-      await createActivity(activityData);
-      await loadActivities(); // Reload activities from backend
-    } catch (error) {
-      // Error creating note activity
-    }
-  };
-
-  const handleTaskActivity = async (taskData: any) => {
-    try {
-      const companyId = company?.id || company?._id;
-      if (!companyId) return;
-
-      const activityData: CreateActivityRequest = {
-        title: `Task created: ${taskData.title}`,
-        description: `Task assigned to ${
-          taskData.assignedTo || "Unassigned"
-        } with ${taskData.priority} priority`,
-        type: "task",
-        status: "pending",
-        companyId,
-        dueDate: taskData.dueDate,
-        duration: taskData.duration || 30,
-      };
-
-      await createActivity(activityData);
-      await loadActivities(); // Reload activities from backend
-    } catch (error) {
-      // Error creating task activity
-    }
-  };
-
-  const handleDealActivity = async (dealData: any) => {
-    try {
-      const companyId = company?.id || company?._id;
-      if (!companyId) {
-        return;
-      }
-
-      // Only create activity if we have a real deal ID (not a temporary one)
-      const dealId =
-        dealData._id ||
-        (dealData.id && dealData.id.length === 24 ? dealData.id : null);
-      if (!dealId) {
-        return;
-      }
-
-      // Get stage name from pipeline stages
-      const stageName =
-        pipelineStages.find((stage) => stage._id === dealData.stageId)?.name ||
-        "Unknown Stage";
-
-      const activityData: CreateActivityRequest = {
-        title: `Deal created: ${dealData.name}`,
-        description: `New deal worth $${dealData.value} in ${stageName} stage`,
-        type: "note",
-        status: "completed",
-        companyId,
-        dealId,
-      };
-
-      await createActivity(activityData);
-      await loadActivities();
-    } catch (error) {
-      // Error creating deal activity
-    }
-  };
-
-  const handleDealEditActivity = async (dealData: any) => {
-    try {
-      const companyId = company?.id || company?._id;
-      if (!companyId) return;
-
-      const dealId = dealData._id || dealData.id;
-      if (!dealId) return;
-
-      // Get stage name from pipeline stages
-      const stageName =
-        pipelineStages.find((stage) => stage._id === dealData.stageId)?.name ||
-        "Unknown Stage";
-
-      const activityData: CreateActivityRequest = {
-        title: `Deal updated: ${dealData.name}`,
-        description: `Deal worth $${dealData.value} was updated to ${stageName} stage`,
-        type: "note",
-        status: "completed",
-        companyId,
-        dealId,
-      };
-
-      await createActivity(activityData);
-      await loadActivities();
-    } catch (error) {
-      // Error creating deal edit activity
-    }
-  };
-
-  const handleDealDeleteActivity = async (
-    _dealId: string,
-    dealName: string,
-    dealValue: number
-  ) => {
-    try {
-      const companyId = company?.id || company?._id;
-      if (!companyId) return;
-
-      const activityData: CreateActivityRequest = {
-        title: `Deal deleted: ${dealName}`,
-        description: `Deal worth $${dealValue} was deleted`,
-        type: "note",
-        status: "completed",
-        companyId,
-      };
-
-      await createActivity(activityData);
-      await loadActivities();
-    } catch (error) {
-      // Error creating deal delete activity
-    }
-  };
-
-  const handleDealSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (
-      !dealForm.name ||
-      !dealForm.value ||
-      !dealForm.closeDate ||
-      !dealForm.stageId
-    ) {
-      alert("Please fill in all required fields including stage");
-      return;
-    }
-
-    const newDeal = {
-      id: editingDeal ? editingDeal.id : Date.now().toString(),
-      name: dealForm.name,
-      value: Number(dealForm.value),
-      stageId: dealForm.stageId,
-      probability: dealForm.probability,
-      closeDate: dealForm.closeDate,
-      description: dealForm.description,
+  }, [id, loadCompanyDeals, loadCompanyActivities, isUpdatingCompany]);
+
+  // Refresh tabs trigger
+  const refreshTabs = useCallback(() => {
+    console.log('🔄 Refreshing tabs, current trigger:', refreshTrigger);
+    setRefreshTrigger((prev) => prev + 1);
+    // Also refresh deals and activities without refreshing the entire company
+    loadCompanyDeals();
+    loadCompanyActivities();
+  }, [refreshTrigger, loadCompanyDeals, loadCompanyActivities]);
+
+  // ✅ Refresh on focus/visibility change (debounced)
+  useEffect(() => {
+    let focusTimeout: ReturnType<typeof setTimeout> | null = null;
+    let visibilityTimeout: ReturnType<typeof setTimeout> | null = null;
+  
+    // ✅ Call refreshCompany immediately on mount
+    refreshCompany();
+  
+    const handleFocus = () => {
+      if (isUpdatingCompany) return; // Don't refresh if we're updating
+      if (focusTimeout) clearTimeout(focusTimeout);
+      focusTimeout = setTimeout(refreshCompany, 100);
     };
+  
+    const handleVisibilityChange = () => {
+      if (isUpdatingCompany) return; // Don't refresh if we're updating
+      if (!document.hidden) {
+        if (visibilityTimeout) clearTimeout(visibilityTimeout);
+        visibilityTimeout = setTimeout(refreshCompany, 200);
+      }
+    };
+  
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+  
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (focusTimeout) clearTimeout(focusTimeout);
+      if (visibilityTimeout) clearTimeout(visibilityTimeout);
+    };
+  }, [refreshCompany, isUpdatingCompany]);
+  
 
-    if (editingDeal) {
-      await handleEditDeal(newDeal);
-    } else {
-      await handleAddDeal(newDeal);
+  // ✅ Load company on mount and when id changes
+  useEffect(() => {
+    if (id) {
+      refreshCompany();
+    }
+  }, [id, refreshCompany]);
+
+  // Load deals on mount
+  useEffect(() => {
+    if (id) {
+      loadCompanyDeals();
+    }
+  }, [id, loadCompanyDeals]);
+
+  const handleDealsUpdate = (updatedDeals: Deal[]) => {
+    setDeals(updatedDeals);
+  };
+
+  const handleShowDealModal = () => {
+    setDealModalTrigger(prev => prev + 1);
+  };
+
+  const handleShowEditDeal = (deal: Deal) => {
+    // TODO: Implement edit deal functionality - could trigger DealManager edit modal
+    console.log('Edit deal:', deal);
+  };
+
+  const handleDeleteDeal = (dealId: string) => {
+    // TODO: Implement delete deal functionality - could trigger DealManager delete
+    console.log('Delete deal:', dealId);
+  };
+
+  // ✅ Save company
+  const handleSaveCompany = async (newCompanyData: any) => {
+    if (isUpdatingCompany) {
+      console.log('🔄 Company update already in progress, skipping...');
+      return;
+    }
+
+    try {
+      setIsUpdatingCompany(true);
+      console.log('🔄 Starting to save company...');
+      console.log('📝 Company object:', company);
+      console.log('📝 Company ID (id):', company?.id);
+      console.log('📝 Company ID (_id):', company?._id);
+      console.log('📝 New company data:', newCompanyData);
+      console.log('🔒 isUpdatingCompany set to true');
+      
+      // Get the company ID from either id or _id field
+      const companyId = company?.id || company?._id;
+      console.log('📝 Using company ID:', companyId);
+      console.log('📝 API URL:', `/companies/${companyId}`);
+      console.log('📝 Request method: PUT');
+      
+      // Check if we have a valid company ID
+      if (!companyId) {
+        console.error('❌ No company ID found, cannot save');
+        console.error('❌ Company object:', company);
+        alert('Error: No company ID found. Please refresh the page and try again.');
+        return;
+      }
+
+      console.log('📡 Making API call to:', `/companies/${companyId}`);
+      const response = await api.put<any>(
+        `/companies/${companyId}`,
+        newCompanyData
+      );
+
+      console.log('📨 API Response:', response);
+      console.log('📨 Response success:', response.success);
+      console.log('📨 Response data:', response.data);
+      console.log('📨 Response data.company:', response.data?.company);
+      console.log('📨 Response data.data:', response.data?.data);
+
+      if (response.success) {
+        // Handle different response structures
+        let savedCompany;
+        if (response.data?.company) {
+          savedCompany = response.data.company;
+        } else if (response.data?.data?.company) {
+          savedCompany = response.data.data.company;
+        } else {
+          savedCompany = response.data;
+        }
+        
+        console.log('✅ Company saved successfully:', savedCompany);
+        
+        // Update the local company state with the saved data
+        setCompany((prev: any) => {
+          if (!prev) {
+            console.log('🔄 No previous company state, setting new state');
+            return savedCompany;
+          }
+          
+          // First, merge the returned company data from the API
+          const returnedCompany = savedCompany || {};
+          
+          // Create a simple merge of the data, prioritizing returned data
+          const updatedCompany = {
+            ...prev,
+            ...returnedCompany,
+            // Ensure company name is properly set
+            name: returnedCompany.name || prev?.name,
+            // Ensure industry is properly set
+            industry: returnedCompany.industry || prev?.industry,
+            // Ensure status is properly set
+            status: returnedCompany.status || prev?.status,
+            // Ensure ID is properly set
+            id: returnedCompany._id || returnedCompany.id || prev?.id,
+          };
+          
+          console.log('🔄 Previous company state:', prev);
+          console.log('🔄 Returned company data:', returnedCompany);
+          console.log('🔄 Updated company state:', updatedCompany);
+          
+          return updatedCompany;
+        });
+        
+        // Show success message only once
+        alert('Company updated successfully!');
+        
+        // Only refresh deals and activities, don't trigger full company refresh
+        loadCompanyDeals();
+        loadCompanyActivities();
+      } else {
+        console.error('❌ Failed to save company:', response);
+        const errorMessage = response.message || 'Unknown error occurred';
+        alert(`Error updating company: ${errorMessage}`);
+      }
+    } catch (error: any) {
+      console.error('❌ Error saving company:', error);
+      alert(`Error updating company: ${error.message || 'Unknown error occurred'}`);
+    } finally {
+      // Add a small delay to ensure all state updates are complete
+      setTimeout(() => {
+        console.log('🔓 isUpdatingCompany set to false');
+        setIsUpdatingCompany(false);
+      }, 500);
     }
   };
 
-  // Effects
+  // Function to switch to deals tab
+  const handleViewAllDeals = () => {
+    setActiveTab('deals');
+  };
 
-  useEffect(() => {
-    loadCompany();
-  }, [id]);
-
-  useEffect(() => {
-    if ((company?.id || company?._id) && deals.length === 0) {
-      loadDeals();
-    }
-  }, [company?.id, company?._id]);
-
-  useEffect(() => {
-    if ((company?.id || company?._id) && activities.length === 0) {
-      loadActivities();
-    }
-  }, [company?.id, company?._id]);
-
-  // UI States
-
+  // Loading UI
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
         <div className="flex">
           <Sidebar />
-          <main className="flex-1 ml-0 md:ml-20 px-6 py-4 flex items-center justify-center">
+          <main className="flex-1 ml-0 md:ml-20 px-2 sm:px-4 md:px-6 py-4">
+            <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">
-                Loading company details...
-              </p>
+                <p className="text-muted-foreground">Loading company details...</p>
+              </div>
             </div>
           </main>
         </div>
@@ -663,57 +347,62 @@ const CompanyDetails: React.FC = () => {
     );
   }
 
+  // Not found
   if (!company) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
         <div className="flex">
           <Sidebar />
-          <main className="flex-1 ml-0 md:ml-20 px-6 py-4 text-center">
-            <h2 className="text-2xl font-semibold mb-4">Company Not Found</h2>
+          <main className="flex-1 ml-0 md:ml-20 px-2 sm:px-4 md:px-6 py-4">
+            <div className="text-center py-12">
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                Company Not Found
+              </h2>
             <p className="text-muted-foreground mb-6">
               The company you're looking for doesn't exist or has been removed.
             </p>
             <button
-              onClick={() => navigate("/companies")}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                onClick={() => navigate("/companies-list")}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-smooth"
             >
               Back to Companies
             </button>
+            </div>
           </main>
         </div>
       </div>
     );
   }
 
-  // Main Render
-
+  // Main UI
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <div className="flex">
         <Sidebar />
-        <main className="flex-1">
+        {/* <main className="flex-1 ml-0  px-2 sm:px-4 md:px-6 py-3">  */}
+        <main className="flex-1  px-6 py-2 flex items-center justify-center">
+          <div className="w-full">
           <Breadcrumbs />
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-7">
             {/* Left Column */}
             <div className="lg:col-span-8 space-y-6">
-              <CompanyInfoCard company={company} onSave={handleSaveCompany} />
+                <CompanyInfoCard 
+                  company={company} 
+                  onSave={handleSaveCompany}
+                />
               <CompanyTabs
                 company={company}
+                taskRefreshTrigger={refreshTrigger}
+                scheduleRefreshTrigger={refreshTrigger}
+                noteRefreshTrigger={refreshTrigger}
                 deals={deals}
-                activities={activities}
-                onAddTask={handleAddTask}
-                taskRefreshTrigger={taskRefreshTrigger}
-                onAddSchedule={handleAddSchedule}
-                scheduleRefreshTrigger={scheduleRefreshTrigger}
-                onAddNote={handleAddNote}
-                noteRefreshTrigger={noteRefreshTrigger}
-                onEditDeal={handleShowEditDeal}
-                onDeleteDeal={handleDeleteDeal}
+                activities={globalActivities}
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
+                onEditDeal={handleShowEditDeal}
+                onDeleteDeal={handleDeleteDeal}
               />
             </div>
 
@@ -721,183 +410,37 @@ const CompanyDetails: React.FC = () => {
             <div className="lg:col-span-4 space-y-6">
               <QuickActionsPanel
                 company={company}
-                onAddDeal={handleShowDealModal}
-                onAddNote={handleAddNote}
-                onAddTask={handleAddTask}
-                onAddSchedule={handleAddSchedule}
-                onCallActivity={handleCallActivity}
-                onEmailActivity={handleEmailActivity}
-                onMeetingActivity={handleMeetingActivity}
-                onNoteActivity={handleNoteActivity}
-                onTaskActivity={handleTaskActivity}
+                onActionComplete={() => { 
+                  console.log('🎯 onActionComplete called - refreshing deals and activities');
+                  loadCompanyDeals(); 
+                  loadCompanyActivities(); 
+                  refreshTabs(); 
+                }}
               />
               <RelatedDealsCard
                 deals={deals}
-                onAddDeal={handleShowDealModal}
-                onEditDeal={handleShowEditDeal}
-                onDeleteDeal={handleDeleteDeal}
-                onViewAllDeals={() => setActiveTab("deals")}
+                onDealUpdate={handleDealsUpdate}
+                company={company}
+                onViewAllDeals={handleViewAllDeals}
               />
               <RecentActivityCard 
-                activities={activities} 
-                onViewAllActivity={() => setActiveTab("activities")}
+                activities={globalActivities} 
+                onViewAllActivity={() => setActiveTab('activities')}
               />
+              </div>
             </div>
           </div>
+
+          {/* Deal Manager Component */}
+          <DealManager
+            companyId={company?.id || company?._id || id || ""}
+            onDealsUpdate={handleDealsUpdate}
+            onDealActivity={() => {}} // Simplified for now
+            onShowDealModal={handleShowDealModal}
+            showDealModalTrigger={dealModalTrigger}
+          />
         </main>
       </div>
-
-      {/* Deal Creation/Edit Modal */}
-      {showDealModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-foreground">
-                {editingDeal ? "Edit Deal" : "Create New Deal"}
-              </h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowDealModal(false)}
-                className="h-8 w-8 p-0"
-              >
-                <Icon name="X" size={16} />
-              </Button>
-            </div>
-
-            <form onSubmit={handleDealSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Deal Name *
-                </label>
-                <input
-                  type="text"
-                  value={dealForm.name}
-                  onChange={(e) =>
-                    setDealForm({ ...dealForm, name: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                  placeholder="Enter deal name"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Value *
-                </label>
-                <input
-                  type="number"
-                  value={dealForm.value}
-                  onChange={(e) =>
-                    setDealForm({ ...dealForm, value: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                  placeholder="Enter deal value"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Stage *
-                </label>
-                <select
-                  value={dealForm.stageId}
-                  onChange={(e) =>
-                    setDealForm({ ...dealForm, stageId: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                  required
-                  disabled={loadingPipelineStages}
-                >
-                  <option value="">
-                    {loadingPipelineStages
-                      ? "Loading stages..."
-                      : "Select a stage"}
-                  </option>
-                  {pipelineStages.map((stage) => (
-                    <option key={stage._id} value={stage._id}>
-                      {stage.name} ({stage.probability}%)
-                    </option>
-                  ))}
-                </select>
-                {loadingPipelineStages && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Loading pipeline stages...
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Probability (%)
-                </label>
-                <input
-                  type="number"
-                  value={dealForm.probability}
-                  onChange={(e) =>
-                    setDealForm({
-                      ...dealForm,
-                      probability: Number(e.target.value),
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                  min="0"
-                  max="100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Close Date *
-                </label>
-                <input
-                  type="date"
-                  value={dealForm.closeDate}
-                  onChange={(e) =>
-                    setDealForm({ ...dealForm, closeDate: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={dealForm.description}
-                  onChange={(e) =>
-                    setDealForm({ ...dealForm, description: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                  rows={3}
-                  placeholder="Enter deal description"
-                />
-              </div>
-            <div className="flex space-x-2 pt-4">
-                <Button
-                  type="submit"
-                  className="flex-1"
-                  disabled={loadingPipelineStages || !dealForm.stageId}
-                >
-                  {editingDeal ? "Update Deal" : "Create Deal"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowDealModal(false)}
-                  className="flex-1"
-                  disabled={loadingPipelineStages}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

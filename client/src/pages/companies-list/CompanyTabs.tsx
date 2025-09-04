@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Icon from "../../components/AppIcon";
 import Button from "../../components/ui/Button";
 
-import { createNote, getNotes } from "src/services/notes";
+// Note: Using activities endpoint instead of separate note service
 import { Activity } from "../../services/activities";
 import {
   getCompanyFiles,
@@ -28,11 +28,8 @@ interface CompanyTabsProps {
     owner?: string;
   }>;
   activities?: Activity[];
-  onAddTask?: (task: any) => void;
   taskRefreshTrigger?: number;
-  onAddSchedule?: (schedule: any) => void;
   scheduleRefreshTrigger?: number;
-  onAddNote?: (note: any) => void;
   noteRefreshTrigger?: number;
   onEditDeal?: (deal: any) => void;
   onDeleteDeal?: (dealId: string) => void;
@@ -44,9 +41,7 @@ const CompanyTabs = ({
   company,
   deals = [],
   activities = [],
-  onAddTask,
-  onAddSchedule,
-  onAddNote,
+
   taskRefreshTrigger,
   scheduleRefreshTrigger,
   noteRefreshTrigger,
@@ -56,42 +51,32 @@ const CompanyTabs = ({
   onTabChange,
 }: CompanyTabsProps) => {
   const [internalActiveTab, setInternalActiveTab] = useState("activities");
+
+  console.log(deals , 'deals');
+  
   
   // Use external activeTab if provided, otherwise use internal state
   const activeTab = externalActiveTab || internalActiveTab;
   const setActiveTab = onTabChange || setInternalActiveTab;
-  const [newNote, setNewNote] = useState("");
-  const [newNoteType, setNewNoteType] = useState("general");
+
   const [notes, setNotes] = useState<any[]>([]);
   const [notesLoading, setNotesLoading] = useState(false);
 
   // Tasks state
   const [tasks, setTasks] = useState<any[]>([]);
   const [tasksLoading, setTasksLoading] = useState(false);
-  const [newTask, setNewTask] = useState({
-    title: "",
-    description: "",
-    dueDate: "",
-    priority: "medium" as "low" | "medium" | "high",
-    assignedTo: "",
-  });
+
 
   // Schedules state
   const [schedules, setSchedules] = useState<any[]>([]);
   const [schedulesLoading, setSchedulesLoading] = useState(false);
-  const [newSchedule, setNewSchedule] = useState({
-    meetingTitle: "",
-    date: "",
-    time: "",
-    duration: 30 as 10 | 30 | 45 | 60,
-    attendees: "",
-    notes: "",
-  });
+
 
   // Edit note state
   const [editingNote, setEditingNote] = useState<any>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState({
+    title: "",
     content: "",
     type: "general" as "general" | "meeting" | "call" | "email",
   });
@@ -138,20 +123,23 @@ const CompanyTabs = ({
       setNotesLoading(true);
       const companyId = company.id || company._id;
 
-      const response = await getNotes(companyId);
+      const { api } = await import("src/services/api");
+      const response = await api.get(`/activities/company/${companyId}?type=note`);
 
-      if (response && Array.isArray(response)) {
-        setNotes(response);
-      } else if (
-        response &&
-        typeof response === "object" &&
-        "success" in response &&
-        response.success
-      ) {
-        const responseData = response as any;
-        setNotes(responseData.data || []);
+      console.log('Fetch Notes Response:', response);
+      console.log('Company ID:', companyId);
+
+      if (response && response.success && response.data) {
+        const activities = (response.data as any).activities || [];
+        console.log('Notes Activities:', activities);
+        setNotes(activities);
+      } else {
+        console.log('No notes data found');
+        setNotes([]);
       }
     } catch (error) {
+      console.error('Error fetching notes:', error);
+      setNotes([]);
     } finally {
       setNotesLoading(false);
     }
@@ -167,18 +155,20 @@ const CompanyTabs = ({
       const { getTasks } = await import("src/services/tasks");
       const response = await getTasks(companyId);
 
-      if (response && Array.isArray(response)) {
-        setTasks(response);
-      } else if (
-        response &&
-        typeof response === "object" &&
-        "success" in response &&
-        response.success
-      ) {
-        const responseData = response as any;
-        setTasks(responseData.data || []);
+      console.log('Fetch Tasks Response:', response);
+      console.log('Company ID:', companyId);
+
+      if (response && (response as any).success && (response as any).data) {
+        const activities = ((response as any).data as any).activities || [];
+        console.log('Task Activities:', activities);
+        setTasks(activities);
+      } else {
+        console.log('No tasks data found');
+        setTasks([]);
       }
     } catch (error) {
+      console.error('Error fetching tasks:', error);
+      setTasks([]);
     } finally {
       setTasksLoading(false);
     }
@@ -194,18 +184,20 @@ const CompanyTabs = ({
       const { getSchedules } = await import("src/services/schedules");
       const response = await getSchedules(companyId);
 
-      if (response && Array.isArray(response)) {
-        setSchedules(response);
-      } else if (
-        response &&
-        typeof response === "object" &&
-        "success" in response &&
-        response.success
-      ) {
-        const responseData = response as any;
-        setSchedules(responseData.data || []);
+      console.log('Fetch Schedules Response:', response);
+      console.log('Company ID:', companyId);
+
+      if (response && (response as any).success && (response as any).data) {
+        const activities = ((response as any).data as any).activities || [];
+        console.log('Schedule Activities:', activities);
+        setSchedules(activities);
+      } else {
+        console.log('No schedules data found');
+        setSchedules([]);
       }
     } catch (error) {
+      console.error('Error fetching schedules:', error);
+      setSchedules([]);
     } finally {
       setSchedulesLoading(false);
     }
@@ -239,18 +231,21 @@ const CompanyTabs = ({
 
   useEffect(() => {
     if (taskRefreshTrigger && taskRefreshTrigger > 0) {
+      console.log('🔄 Task refresh triggered:', taskRefreshTrigger);
       fetchTasks();
     }
   }, [taskRefreshTrigger]);
 
   useEffect(() => {
     if (scheduleRefreshTrigger && scheduleRefreshTrigger > 0) {
+      console.log('🔄 Schedule refresh triggered:', scheduleRefreshTrigger);
       fetchSchedules();
     }
   }, [scheduleRefreshTrigger]);
 
   useEffect(() => {
     if (noteRefreshTrigger && noteRefreshTrigger > 0) {
+      console.log('🔄 Note refresh triggered:', noteRefreshTrigger);
       fetchNotes();
     }
   }, [noteRefreshTrigger]);
@@ -463,32 +458,15 @@ const CompanyTabs = ({
     }).format(date);
   };
 
-  const handleAddNote = async () => {
-    if (newNote.trim()) {
-      try {
-        const response = await createNote({
-          content: newNote,
-          companyId: company.id || company._id,
-          type: newNoteType,
-        });
 
-        if (response && typeof response === "object" && "_id" in response) {
-          setNewNote("");
-          setNewNoteType("general");
-          await fetchNotes();
-        }
-      } catch (error) {
-        // Error creating note
-      }
-    }
-  };
 
   const handleEditNote = async (note: any) => {
     try {
       setEditingNote(note);
       setEditForm({
-        content: note.content,
-        type: note.type,
+        title: note.title || "",
+        content: note.description || note.content,
+        type: note.customFields?.noteType || note.type || "general",
       });
       setShowEditModal(true);
     } catch (error) {}
@@ -529,20 +507,21 @@ const CompanyTabs = ({
   };
 
   const handleSaveEdit = async () => {
-    if (!editingNote || !editForm.content.trim()) return;
+    if (!editingNote || !editForm.title?.trim() || !editForm.content?.trim()) return;
 
     try {
-      const { updateNote } = await import("src/services/notes");
-      const response = await updateNote(editingNote._id, {
-        content: editForm.content,
+      const { api } = await import("src/services/api");
+      const response = await api.put(`/activities/${editingNote._id}`, {
+        title: editForm.title,
+        description: editForm.content,
         type: editForm.type,
         companyId: editingNote.companyId,
       });
 
-      if (response) {
+      if (response && response.success) {
         setShowEditModal(false);
         setEditingNote(null);
-        setEditForm({ content: "", type: "general" });
+        setEditForm({ title: "", content: "", type: "general" });
         await fetchNotes();
       }
     } catch (error: any) {
@@ -553,43 +532,10 @@ const CompanyTabs = ({
   const handleCancelEdit = () => {
     setShowEditModal(false);
     setEditingNote(null);
-    setEditForm({ content: "", type: "general" });
+    setEditForm({ title: "", content: "", type: "general" });
   };
 
   // Task handlers
-  const handleAddTask = async () => {
-    if (
-      !newTask.title.trim() ||
-      !newTask.description.trim() ||
-      !newTask.dueDate
-    ) {
-      alert("Please fill in all required fields");
-      return;
-    }
-
-    try {
-      const { createTask } = await import("src/services/tasks");
-      const response = await createTask({
-        ...newTask,
-        companyId: company.id || company._id,
-      });
-
-      if (response && typeof response === "object" && "_id" in response) {
-        setNewTask({
-          title: "",
-          description: "",
-          dueDate: "",
-          priority: "medium",
-          assignedTo: "",
-        });
-        await fetchTasks();
-      } else {
-        alert("Failed to create task. Please try again.");
-      }
-    } catch (error: any) {
-      alert("Failed to create task. Please try again.");
-    }
-  };
 
   const handleEditTask = async (task: any) => {
     try {
@@ -602,8 +548,8 @@ const CompanyTabs = ({
           : "",
         priority: task.priority,
         assignedTo:
-          task.assignedTo?.id || task.assignedTo?._id || task.assignedTo || "",
-        status: task.status,
+          task.assignedTo || task.userId?.id || task.userId?._id || task.userId || "",
+        status: task.status === 'in_progress' ? 'in-progress' : task.status,
       });
       setShowEditTaskModal(true);
     } catch (error) {}
@@ -642,8 +588,8 @@ const CompanyTabs = ({
   const handleSaveTaskEdit = async () => {
     if (
       !editingTask ||
-      !editTaskForm.title.trim() ||
-      !editTaskForm.description.trim() ||
+      !editTaskForm.title?.trim() ||
+      !editTaskForm.description?.trim() ||
       !editTaskForm.dueDate
     ) {
       alert("Please fill in all required fields");
@@ -694,54 +640,21 @@ const CompanyTabs = ({
   };
 
   // Schedule handlers
-  const handleAddSchedule = async () => {
-    if (
-      !newSchedule.meetingTitle.trim() ||
-      !newSchedule.date ||
-      !newSchedule.time ||
-      !newSchedule.attendees.trim()
-    ) {
-      alert("Please fill in all required fields");
-      return;
-    }
-
-    try {
-      const { createSchedule } = await import("src/services/schedules");
-      const response = await createSchedule({
-        ...newSchedule,
-        companyId: company.id || company._id,
-      });
-
-      if (response && typeof response === "object" && "_id" in response) {
-        setNewSchedule({
-          meetingTitle: "",
-          date: "",
-          time: "",
-          duration: 30,
-          attendees: "",
-          notes: "",
-        });
-        await fetchSchedules();
-      } else {
-        alert("Failed to create schedule. Please try again.");
-      }
-    } catch (error: any) {
-      alert("Failed to create schedule. Please try again.");
-    }
-  };
 
   const handleEditSchedule = async (schedule: any) => {
     try {
       setEditingSchedule(schedule);
       setEditScheduleForm({
-        meetingTitle: schedule.meetingTitle,
-        date: schedule.date
-          ? new Date(schedule.date).toISOString().split("T")[0]
-          : "",
-        time: schedule.time,
+        meetingTitle: schedule.title || schedule.meetingTitle,
+        date: schedule.scheduledAt 
+          ? new Date(schedule.scheduledAt).toISOString().split("T")[0]
+          : schedule.customFields?.meetingDate || "",
+        time: schedule.scheduledAt 
+          ? new Date(schedule.scheduledAt).toTimeString().split(" ")[0].substring(0, 5)
+          : schedule.customFields?.meetingTime || "",
         duration: schedule.duration,
-        attendees: schedule.attendees,
-        notes: schedule.notes || "",
+        attendees: schedule.customFields?.attendees || schedule.attendees || "",
+        notes: schedule.description || schedule.notes || "",
         status: schedule.status,
       });
       setShowEditScheduleModal(true);
@@ -781,10 +694,10 @@ const CompanyTabs = ({
   const handleSaveScheduleEdit = async () => {
     if (
       !editingSchedule ||
-      !editScheduleForm.meetingTitle.trim() ||
+      !editScheduleForm.meetingTitle?.trim() ||
       !editScheduleForm.date ||
       !editScheduleForm.time ||
-      !editScheduleForm.attendees.trim()
+      !editScheduleForm.attendees?.trim()
     ) {
       alert("Please fill in all required fields");
       return;
@@ -836,17 +749,137 @@ const CompanyTabs = ({
     });
   };
 
+  // Deal edit state
+  const [editingDeal, setEditingDeal] = useState<any>(null);
+  const [showEditDealModal, setShowEditDealModal] = useState(false);
+  const [editDealForm, setEditDealForm] = useState({
+    title: "",
+    description: "",
+    value: "",
+    probability: "",
+    expectedCloseDate: "",
+    stage: "",
+  });
+
   // Deal handlers
-  const handleEditDeal = (deal: any) => {
-    if (onEditDeal) {
-      onEditDeal(deal);
+  const handleEditDeal = async (deal: any) => {
+    try {
+      setEditingDeal(deal);
+      setEditDealForm({
+        title: deal.name || deal.title || "",
+        description: deal.description || "",
+        value: deal.value?.toString() || "",
+        probability: deal.probability?.toString() || "",
+        expectedCloseDate: deal.closeDate || deal.expectedCloseDate || "",
+        stage: deal.stageId || deal.stage || "",
+      });
+      setShowEditDealModal(true);
+    } catch (error) {
+      console.error('Error setting up deal edit:', error);
     }
   };
 
-  const handleDeleteDeal = (dealId: string) => {
-    if (onDeleteDeal) {
-      onDeleteDeal(dealId);
+  const handleDeleteDeal = async (dealId: string) => {
+    try {
+      if (window.confirm("Are you sure you want to delete this deal? This action cannot be undone.")) {
+        const { deleteDeal } = await import("../../services/deals");
+        const response = await deleteDeal(dealId);
+
+        if (response && response.success) {
+          // Call parent callback to refresh deals
+          if (onDeleteDeal) {
+            onDeleteDeal(dealId);
+          }
+          alert("Deal deleted successfully!");
+        } else {
+          alert("Failed to delete deal. Please try again.");
+        }
+      }
+    } catch (error: any) {
+      console.error('Error deleting deal:', error);
+      
+      // Extract detailed error message
+      let errorMessage = 'Failed to delete deal. Please try again.';
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      alert(`Error deleting deal: ${errorMessage}`);
     }
+  };
+
+  const handleSaveDealEdit = async () => {
+    if (!editingDeal || !editDealForm.title?.trim() || !editDealForm.value || !editDealForm.probability) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    try {
+      const { updateDeal } = await import("../../services/deals");
+      const dealData = {
+        title: editDealForm.title.trim(),
+        description: editDealForm.description.trim(),
+        value: Number(editDealForm.value),
+        probability: Number(editDealForm.probability),
+        expectedCloseDate: editDealForm.expectedCloseDate ? new Date(editDealForm.expectedCloseDate).toISOString() : new Date().toISOString(),
+        stageId: editDealForm.stage,
+      };
+
+      const response = await updateDeal(editingDeal.id || editingDeal._id, dealData);
+
+      if (response && response.success) {
+        setShowEditDealModal(false);
+        setEditingDeal(null);
+        setEditDealForm({
+          title: "",
+          description: "",
+          value: "",
+          probability: "",
+          expectedCloseDate: "",
+          stage: "",
+        });
+        // Call parent callback to refresh deals
+        if (onEditDeal) {
+          onEditDeal(editingDeal);
+        }
+        alert("Deal updated successfully!");
+      } else {
+        alert("Failed to update deal. Please try again.");
+      }
+    } catch (error: any) {
+      console.error('Error updating deal:', error);
+      
+      // Extract detailed error message
+      let errorMessage = 'Failed to update deal. Please try again.';
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      alert(`Error updating deal: ${errorMessage}`);
+    }
+  };
+
+  const handleCancelDealEdit = () => {
+    setShowEditDealModal(false);
+    setEditingDeal(null);
+    setEditDealForm({
+      title: "",
+      description: "",
+      value: "",
+      probability: "",
+      expectedCloseDate: "",
+      stage: "",
+    });
   };
 
   const renderTabContent = () => {
@@ -1113,9 +1146,9 @@ const CompanyTabs = ({
                   </p>
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <div className="flex items-center space-x-4">
-                      <span>Due: {formatDate(new Date(task.dueDate))}</span>
+                      <span>Due: {task.dueDate ? formatDate(new Date(task.dueDate)) : "No due date"}</span>
                       <span>
-                        Assigned to: {task.assignedTo || "Unassigned"}
+                        Assigned to: {task.assignedTo || task.userId?.firstName ? `${task.userId.firstName} ${task.userId.lastName}` : "Unassigned"}
                       </span>
                     </div>
                     <span>
@@ -1160,7 +1193,7 @@ const CompanyTabs = ({
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center space-x-2">
                       <h4 className="font-medium text-foreground">
-                        {schedule.meetingTitle}
+                        {schedule.title || schedule.meetingTitle}
                       </h4>
                       <span
                         className={`inline-block px-2 py-1 text-xs rounded-full ${
@@ -1206,12 +1239,17 @@ const CompanyTabs = ({
                     <div>
                       <span className="text-muted-foreground">Date: </span>
                       <span className="text-foreground">
-                        {new Date(schedule.date).toLocaleDateString()}
+                        {schedule.scheduledAt ? new Date(schedule.scheduledAt).toLocaleDateString() : 
+                         schedule.customFields?.meetingDate ? new Date(schedule.customFields.meetingDate).toLocaleDateString() : 
+                         "No date set"}
                       </span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Time: </span>
-                      <span className="text-foreground">{schedule.time}</span>
+                      <span className="text-foreground">
+                        {schedule.scheduledAt ? new Date(schedule.scheduledAt).toLocaleTimeString() : 
+                         schedule.customFields?.meetingTime || "No time set"}
+                      </span>
                     </div>
                   </div>
                   <div className="mb-3">
@@ -1219,16 +1257,16 @@ const CompanyTabs = ({
                       Attendees:{" "}
                     </span>
                     <span className="text-foreground text-sm">
-                      {schedule.attendees}
+                      {schedule.customFields?.attendees || schedule.attendees || "No attendees"}
                     </span>
                   </div>
-                  {schedule.notes && (
+                  {(schedule.description || schedule.notes) && (
                     <div className="mb-3">
                       <span className="text-muted-foreground text-sm">
                         Notes:{" "}
                       </span>
                       <span className="text-foreground text-sm">
-                        {schedule.notes}
+                        {schedule.description || schedule.notes}
                       </span>
                     </div>
                   )}
@@ -1297,17 +1335,22 @@ const CompanyTabs = ({
                           </Button>
                         </div>
                       </div>
-                      <div className="text-sm text-foreground whitespace-pre-line mt-3">
-                        {note.content}
+                      <div className="mb-2">
+                        <h4 className="text-sm font-medium text-foreground">
+                          {note.title || 'Untitled Note'}
+                        </h4>
+                      </div>
+                      <div className="text-sm text-foreground whitespace-pre-line">
+                        {note.description || note.content}
                       </div>
                       <div className="mt-2 flex items-center space-x-3">
-                        {note.type && (
+                        {(note.customFields?.noteType || note.type) && (
                           <span
                             className={`inline-block px-2 py-1 text-xs rounded-full font-medium capitalize ${getActivityTypeColor(
-                              note.type
+                              note.customFields?.noteType || note.type
                             )}`}
                           >
-                            {note.type}
+                            {note.customFields?.noteType || note.type}
                           </span>
                         )}
                         <div className="flex items-center space-x-2">
@@ -1564,18 +1607,27 @@ const CompanyTabs = ({
 
       {/* Edit Note Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold mb-4">Edit Note</h3>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSaveEdit();
-              }}
-              className="space-y-4"
-            >
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-medium text-foreground mb-4">Edit Note</h3>
+            <div className="space-y-4 mb-4">
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label className="text-sm font-medium text-foreground">
+                  Note Title *
+                </label>
+                <input
+                  type="text"
+                  value={editForm.title}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, title: e.target.value })
+                  }
+                  placeholder="Enter note title..."
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground">
                   Note Type
                 </label>
                 <select
@@ -1583,81 +1635,128 @@ const CompanyTabs = ({
                   onChange={(e) =>
                     setEditForm({ ...editForm, type: e.target.value as any })
                   }
-                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <option value="general"> General</option>
-                  <option value="meeting"> Meeting</option>
-                  <option value="call"> Call</option>
+                  <option value="general">General</option>
+                  <option value="meeting">Meeting</option>
+                  <option value="call">Call</option>
                   <option value="email">Email</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Note Content
+                <label className="text-sm font-medium text-foreground">
+                  Note Content *
                 </label>
                 <textarea
                   value={editForm.content}
                   onChange={(e) =>
                     setEditForm({ ...editForm, content: e.target.value })
                   }
-                  className="w-full px-3 py-2 border rounded-md"
+                  placeholder="Enter your note content here..."
                   rows={4}
-                  placeholder="Enter your note here..."
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                   required
                 />
               </div>
-              <div className="flex space-x-3">
-                <Button type="submit" className="flex-1">
-                  Save Changes
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleCancelEdit}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                onClick={handleCancelEdit}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                onClick={handleSaveEdit}
+              >
+                Save Changes
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Edit Task Modal */}
       {showEditTaskModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 w-full max-w-lg mx-4">
-            <h3 className="text-lg font-semibold mb-4">Edit Task</h3>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSaveTaskEdit();
-              }}
-              className="space-y-4"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-medium text-foreground mb-4">Edit Task</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-foreground">Task Title *</label>
+                <input
+                  type="text"
+                  value={editTaskForm.title}
+                  onChange={(e) =>
+                    setEditTaskForm({
+                      ...editTaskForm,
+                      title: e.target.value,
+                    })
+                  }
+                  placeholder="Enter task title"
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium text-foreground">Task Description *</label>
+                <textarea
+                  value={editTaskForm.description}
+                  onChange={(e) =>
+                    setEditTaskForm({
+                      ...editTaskForm,
+                      description: e.target.value,
+                    })
+                  }
+                  placeholder="Enter task description"
+                  rows={3}
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                  required
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Task Title
-                  </label>
-                  <input
-                    type="text"
-                    value={editTaskForm.title}
+                  <label className="text-sm font-medium text-foreground">Priority</label>
+                  <select
+                    value={editTaskForm.priority}
                     onChange={(e) =>
                       setEditTaskForm({
                         ...editTaskForm,
-                        title: e.target.value,
+                        priority: e.target.value as any,
                       })
                     }
-                    className="w-full px-3 py-2 border rounded-md"
-                    required
-                  />
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Due Date
-                  </label>
+                  <label className="text-sm font-medium text-foreground">Status</label>
+                  <select
+                    value={editTaskForm.status}
+                    onChange={(e) =>
+                      setEditTaskForm({
+                        ...editTaskForm,
+                        status: e.target.value as any,
+                      })
+                    }
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-foreground">Due Date</label>
                   <input
                     type="date"
                     value={editTaskForm.dueDate}
@@ -1667,54 +1766,12 @@ const CompanyTabs = ({
                         dueDate: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 border rounded-md"
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     required
                   />
                 </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Priority
-                  </label>
-                  <select
-                    value={editTaskForm.priority}
-                    onChange={(e) =>
-                      setEditTaskForm({
-                        ...editTaskForm,
-                        priority: e.target.value as any,
-                      })
-                    }
-                    className="w-full px-3 py-2 border rounded-md"
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Status
-                  </label>
-                  <select
-                    value={editTaskForm.status}
-                    onChange={(e) =>
-                      setEditTaskForm({
-                        ...editTaskForm,
-                        status: e.target.value as any,
-                      })
-                    }
-                    className="w-full px-3 py-2 border rounded-md"
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="completed">Completed</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Assigned To
-                  </label>
+                  <label className="text-sm font-medium text-foreground">Assign To *</label>
                   <input
                     type="text"
                     value={editTaskForm.assignedTo}
@@ -1724,79 +1781,57 @@ const CompanyTabs = ({
                         assignedTo: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 border rounded-md"
+                    placeholder="Enter assignee name"
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     required
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={editTaskForm.description}
-                  onChange={(e) =>
-                    setEditTaskForm({
-                      ...editTaskForm,
-                      description: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border rounded-md"
-                  rows={3}
-                  placeholder="Enter task description..."
-                  required
-                />
-              </div>
-              <div className="flex space-x-3">
-                <Button type="submit" className="flex-1">
-                  Save Changes
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleCancelTaskEdit}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
+            </div>
+            <div className="flex justify-end space-x-2 mt-6">
+              <Button
+                variant="outline"
+                onClick={handleCancelTaskEdit}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                onClick={handleSaveTaskEdit}
+              >
+                Save Changes
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Edit Schedule Modal */}
       {showEditScheduleModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 w-full max-w-lg mx-4">
-            <h3 className="text-lg font-semibold mb-4">Edit Schedule</h3>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSaveScheduleEdit();
-              }}
-              className="space-y-4"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-medium text-foreground mb-4">Edit Schedule</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-foreground">Meeting Title *</label>
+                <input
+                  type="text"
+                  value={editScheduleForm.meetingTitle}
+                  onChange={(e) =>
+                    setEditScheduleForm({
+                      ...editScheduleForm,
+                      meetingTitle: e.target.value,
+                    })
+                  }
+                  placeholder="Enter meeting title"
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  required
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Meeting Title
-                  </label>
-                  <input
-                    type="text"
-                    value={editScheduleForm.meetingTitle}
-                    onChange={(e) =>
-                      setEditScheduleForm({
-                        ...editScheduleForm,
-                        meetingTitle: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border rounded-md"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Date</label>
+                  <label className="text-sm font-medium text-foreground">Date *</label>
                   <input
                     type="date"
                     value={editScheduleForm.date}
@@ -1806,14 +1841,12 @@ const CompanyTabs = ({
                         date: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 border rounded-md"
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     required
                   />
                 </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Time</label>
+                  <label className="text-sm font-medium text-foreground">Time *</label>
                   <input
                     type="time"
                     value={editScheduleForm.time}
@@ -1823,14 +1856,15 @@ const CompanyTabs = ({
                         time: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 border rounded-md"
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     required
                   />
                 </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Duration
-                  </label>
+                  <label className="text-sm font-medium text-foreground">Duration</label>
                   <select
                     value={editScheduleForm.duration}
                     onChange={(e) =>
@@ -1839,7 +1873,7 @@ const CompanyTabs = ({
                         duration: parseInt(e.target.value) as 10 | 30 | 45 | 60,
                       })
                     }
-                    className="w-full px-3 py-2 border rounded-md"
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <option value={10}>10 minutes</option>
                     <option value={30}>30 minutes</option>
@@ -1848,9 +1882,7 @@ const CompanyTabs = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Status
-                  </label>
+                  <label className="text-sm font-medium text-foreground">Status</label>
                   <select
                     value={editScheduleForm.status}
                     onChange={(e) =>
@@ -1859,7 +1891,7 @@ const CompanyTabs = ({
                         status: e.target.value as any,
                       })
                     }
-                    className="w-full px-3 py-2 border rounded-md"
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <option value="scheduled">Scheduled</option>
                     <option value="completed">Completed</option>
@@ -1867,10 +1899,9 @@ const CompanyTabs = ({
                   </select>
                 </div>
               </div>
+              
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Attendees
-                </label>
+                <label className="text-sm font-medium text-foreground">Attendees *</label>
                 <input
                   type="text"
                   value={editScheduleForm.attendees}
@@ -1880,12 +1911,14 @@ const CompanyTabs = ({
                       attendees: e.target.value,
                     })
                   }
-                  className="w-full px-3 py-2 border rounded-md"
+                  placeholder="Enter attendees (comma separated)"
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   required
                 />
               </div>
+              
               <div>
-                <label className="block text-sm font-medium mb-1">Notes</label>
+                <label className="text-sm font-medium text-foreground">Notes</label>
                 <textarea
                   value={editScheduleForm.notes}
                   onChange={(e) =>
@@ -1894,25 +1927,26 @@ const CompanyTabs = ({
                       notes: e.target.value,
                     })
                   }
-                  className="w-full px-3 py-2 border rounded-md"
+                  placeholder="Meeting notes (optional)"
                   rows={3}
-                  placeholder="Enter meeting notes..."
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                 />
               </div>
-              <div className="flex space-x-3">
-                <Button type="submit" className="flex-1">
-                  Save Changes
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleCancelScheduleEdit}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
+            </div>
+            <div className="flex justify-end space-x-2 mt-6">
+              <Button
+                variant="outline"
+                onClick={handleCancelScheduleEdit}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                onClick={handleSaveScheduleEdit}
+              >
+                Save Changes
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -2018,6 +2052,136 @@ const CompanyTabs = ({
                   <p className="text-red-600">Failed to load preview</p>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Deal Modal */}
+      {showEditDealModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-medium text-foreground mb-4">Edit Deal</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-foreground">Deal Title *</label>
+                <input
+                  type="text"
+                  value={editDealForm.title}
+                  onChange={(e) =>
+                    setEditDealForm({
+                      ...editDealForm,
+                      title: e.target.value,
+                    })
+                  }
+                  placeholder="Enter deal title"
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium text-foreground">Description</label>
+                <textarea
+                  value={editDealForm.description}
+                  onChange={(e) =>
+                    setEditDealForm({
+                      ...editDealForm,
+                      description: e.target.value,
+                    })
+                  }
+                  placeholder="Enter deal description"
+                  rows={3}
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-foreground">Value *</label>
+                  <input
+                    type="number"
+                    value={editDealForm.value}
+                    onChange={(e) =>
+                      setEditDealForm({
+                        ...editDealForm,
+                        value: e.target.value,
+                      })
+                    }
+                    placeholder="0"
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground">Probability *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={editDealForm.probability}
+                    onChange={(e) =>
+                      setEditDealForm({
+                        ...editDealForm,
+                        probability: e.target.value,
+                      })
+                    }
+                    placeholder="0"
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-foreground">Close Date</label>
+                  <input
+                    type="date"
+                    value={editDealForm.expectedCloseDate}
+                    onChange={(e) =>
+                      setEditDealForm({
+                        ...editDealForm,
+                        expectedCloseDate: e.target.value,
+                      })
+                    }
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground">Stage</label>
+                  <select
+                    value={editDealForm.stage}
+                    onChange={(e) =>
+                      setEditDealForm({
+                        ...editDealForm,
+                        stage: e.target.value,
+                      })
+                    }
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Select Stage</option>
+                    <option value="Onboarding">Onboarding</option>
+                    <option value="Implementation">Implementation</option>
+                    <option value="Go-Live">Go-Live</option>
+                    <option value="Success">Success</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2 mt-6">
+              <Button
+                variant="outline"
+                onClick={handleCancelDealEdit}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                onClick={handleSaveDealEdit}
+              >
+                Save Changes
+              </Button>
             </div>
           </div>
         </div>

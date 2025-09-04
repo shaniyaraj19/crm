@@ -12,6 +12,9 @@ router.use(generalRateLimit);
 // Get all activities with filtering and pagination
 router.get('/', ActivityController.getActivities);
 
+// Get activities by company with type filtering
+router.get('/company/:companyId', ActivityController.getActivitiesByCompany);
+
 // Get activity by ID
 router.get('/:id', ActivityController.getActivity);
 

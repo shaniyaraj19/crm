@@ -15,8 +15,20 @@ export interface Task {
 
 export const createTask = async (task: Task) => {
     try {
-        const response = await api.post('/tasks', task);
-        return response.data;
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+        const activityData = {
+            type: 'task',
+            title: task.title,
+            description: task.description,
+            dueDate: task.dueDate,
+            priority: task.priority,
+            status: task.status === 'in-progress' ? 'in_progress' : (task.status || 'pending'),
+            companyId: task.companyId,
+            userId: currentUser._id,
+            assignedTo: task.assignedTo
+        };
+        const response = await api.post('/activities', activityData);
+        return response;
     } catch (error) {
         console.error(error);
         throw error;
@@ -25,8 +37,8 @@ export const createTask = async (task: Task) => {
 
 export const getTasks = async (companyId: string) => {
     try {
-        const response = await api.get(`/tasks/company/${companyId}`);
-        return response.data;
+        const response = await api.get(`/activities/company/${companyId}?type=task`);
+        return response;
     } catch (error) {
         console.error(error);
         throw error;
@@ -45,8 +57,18 @@ export const getTaskById = async (taskId: string) => {
 
 export const updateTask = async (taskId: string, task: Partial<Task>) => {
     try {
-        const response = await api.put(`/tasks/${taskId}`, task);
-        return response.data;
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+        const activityData = {
+            title: task.title,
+            description: task.description,
+            dueDate: task.dueDate,
+            priority: task.priority,
+            status: task.status === 'in-progress' ? 'in_progress' : task.status,
+            userId: currentUser._id,
+            assignedTo: task.assignedTo
+        };
+        const response = await api.put(`/activities/${taskId}`, activityData);
+        return response;
     } catch (error) {
         console.error(error);
         throw error;
@@ -55,7 +77,7 @@ export const updateTask = async (taskId: string, task: Partial<Task>) => {
 
 export const deleteTask = async (taskId: string) => {
     try {
-        const response = await api.delete(`/tasks/${taskId}`);
+        const response = await api.delete(`/activities/${taskId}`);
         return response;
     } catch (error) {
         console.error('🔍 Tasks Service: Delete error:', error);

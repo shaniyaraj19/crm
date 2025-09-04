@@ -154,9 +154,16 @@ export class ActivityController {
    */
   static async createActivity(req: Request, res: Response, next: NextFunction) {
     try {
+      // Check if user has organizationId, if not, use userId as organizationId (for single-user setups)
+      const organizationId = req.user?.organizationId || req.user?.userId;
+      
+      if (!organizationId) {
+        throw new Error('User must have either organizationId or userId. Please log out and log back in.');
+      }
+      
       const activityData = {
         ...req.body,
-        organizationId: req.user?.organizationId,
+        organizationId,
         createdBy: req.user?.userId
       };
 
@@ -396,7 +403,8 @@ export class ActivityController {
    */
   static async getActivityStats(req: Request, res: Response, next: NextFunction) {
     try {
-      const organizationId = req.user?.organizationId;
+      // Check if user has organizationId, if not, use userId as organizationId (for single-user setups)
+      const organizationId = req.user?.organizationId || req.user?.userId;
       const userId = req.user?.userId;
 
       const stats = await Activity.aggregate([
@@ -439,6 +447,59 @@ export class ActivityController {
         }
       };
 
+      res.status(HTTP_STATUS.OK).json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get activities by company with type filtering
+   */
+  static async getActivitiesByCompany(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { companyId } = req.params;
+      const { type, page = 1, limit = 20, sort = 'createdAt', order = 'desc' } = req.query as any;
+
+      const query: any = {
+        organizationId: req.user?.organizationId,
+        companyId: companyId,
+        isDeleted: { $ne: true }
+      };
+
+      if (type) {
+        query.type = type;
+      }
+
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+      const limitNum = Math.min(parseInt(limit), 100);
+
+      const [activities, total] = await Promise.all([
+        Activity.find(query)
+          .populate('userId', 'firstName lastName email profilePicture')
+          .populate('contactId', 'firstName lastName email')
+          .populate('dealId', 'title value')
+          .populate('companyId', 'name')
+          .populate('createdBy', 'firstName lastName')
+          .sort({ [sort]: order === 'asc' ? 1 : -1 })
+          .skip(skip)
+          .limit(limitNum)
+          .lean(),
+        Activity.countDocuments(query)
+      ]);
+
+      const response: ApiResponse = {
+        success: true,
+        data: {
+          activities,
+          pagination: {
+            page: parseInt(page),
+            limit: limitNum,
+            total,
+            totalPages: Math.ceil(total / limitNum)
+          }
+        }
+      };
       res.status(HTTP_STATUS.OK).json(response);
     } catch (error) {
       next(error);

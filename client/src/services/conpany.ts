@@ -2,7 +2,7 @@ import { api } from "./api";
 
 export const getCompanies = async () => {
   try {
-    const res = await api.get("http://localhost:3001/api/v1/companies/");
+    const res = await api.get("/companies/");
     return res.data;  
   } catch (err: any) {
     console.error("Error fetching companies:", err.response?.data || err.message);
@@ -13,7 +13,7 @@ export const getCompanies = async () => {
 export const updateCompany = async (companyId: string, updateData: any) => {
   try {
     console.log('🔧 Service: Calling API with:', { companyId, updateData });
-    const res = await api.put(`http://localhost:3001/api/v1/companies/${companyId}`, updateData);
+    const res = await api.put(`/companies/${companyId}`, updateData);
     console.log('🔧 Service: Raw API response:', res);
     console.log('🔧 Service: Response data:', res.data);
     console.log('🔧 Service: Response data.data:', res.data.data);

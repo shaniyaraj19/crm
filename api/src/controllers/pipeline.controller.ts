@@ -13,7 +13,8 @@ export class PipelineController {
    */
   static async getPipelines(req: Request, res: Response, next: NextFunction) {
     try {
-      const { organizationId } = req.user!;
+      // Check if user has organizationId, if not, use userId as organizationId (for single-user setups)
+      const organizationId = req.user?.organizationId || req.user?.userId;
       const { includeInactive = false } = req.query;
 
       const query: any = { organizationId };
@@ -43,7 +44,8 @@ export class PipelineController {
   static async getPipelineById(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const { organizationId } = req.user!;
+      // Check if user has organizationId, if not, use userId as organizationId (for single-user setups)
+      const organizationId = req.user?.organizationId || req.user?.userId;
 
       const pipeline = await Pipeline.findOne({ _id: id, organizationId })
         .populate('createdBy', 'firstName lastName email')

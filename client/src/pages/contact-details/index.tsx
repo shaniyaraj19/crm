@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../services/api';
+import { DealService } from '../../services/deals';
 import Header from '../../components/ui/Header';
 import Sidebar from '../../components/ui/Sidebar';
 import Breadcrumbs from '../../components/ui/Breadcrumbs';
@@ -16,6 +17,7 @@ const ContactDetails = () => {
   const { id } = useParams();
   const location = useLocation();
   const [contact, setContact] = useState<any>(null);
+  const [deals, setDeals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Load contact data from router state or API
@@ -51,35 +53,35 @@ const ContactDetails = () => {
   };
 
   // Mock related deals
-  const mockDeals = [
-    {
-      id: 1,
-      name: "Enterprise Software License",
-      value: 75000,
-      stage: "proposal",
-      probability: 75,
-      closeDate: "02/15/2025",
-      owner: "John Smith"
-    },
-    {
-      id: 2,
-      name: "Consulting Services",
-      value: 25000,
-      stage: "negotiation",
-      probability: 60,
-      closeDate: "01/30/2025",
-      owner: "Sarah Johnson"
-    },
-    {
-      id: 3,
-      name: "Support Package",
-      value: 15000,
-      stage: "won",
-      probability: 100,
-      closeDate: "12/15/2024",
-      owner: "John Smith"
-    }
-  ];
+  // const mockDeals = [
+  //   {
+  //     id: 1,
+  //     name: "Enterprise Software License",
+  //     value: 75000,
+  //     stage: "proposal",
+  //     probability: 75,
+  //     closeDate: "02/15/2025",
+  //     owner: "John Smith"
+  //   },
+  //   {
+  //     id: 2,
+  //     name: "Consulting Services",
+  //     value: 25000,
+  //     stage: "negotiation",
+  //     probability: 60,
+  //     closeDate: "01/30/2025",
+  //     owner: "Sarah Johnson"
+  //   },
+  //   {
+  //     id: 3,
+  //     name: "Support Package",
+  //     value: 15000,
+  //     stage: "won",
+  //     probability: 100,
+  //     closeDate: "12/15/2024",
+  //     owner: "John Smith"
+  //   }
+  // ];
 
   // Mock recent activities
   const mockActivities = [
@@ -154,17 +156,35 @@ const ContactDetails = () => {
             owner: c.createdBy || 'Unassigned'
           };
         };
+        
+        let normalizedContact = null;
         if (stateContact) {
-          setContact(normalize(stateContact));
-          return;
-        }
-        // Fallback: fetch by id if available
-        if (id) {
+          normalizedContact = normalize(stateContact);
+          setContact(normalizedContact);
+        } else if (id) {
+          // Fallback: fetch by id if available
           const response = await api.get(`/contacts/${id}`);
           if (response.success) {
             const c = (response.data as any)?.contact || (response.data as any);
-            setContact(normalize(c));
-            return;
+            normalizedContact = normalize(c);
+            setContact(normalizedContact);
+          }
+        }
+        
+        // Load deals for the contact
+        if (normalizedContact?.id) {
+          try {
+            const dealsResponse = await DealService.getContactDeals(normalizedContact.id);
+            if (dealsResponse.success) {
+              console.log('Successfully loaded and set deals:', dealsResponse.deals.length);
+              setDeals(dealsResponse.deals || []);
+            } else {
+              console.error('Failed to load deals:', dealsResponse.error);
+              setDeals([]);
+            }
+          } catch (error) {
+            console.error('Error loading deals:', error);
+            setDeals([]);
           }
         }
       } finally {
@@ -242,7 +262,7 @@ const ContactDetails = () => {
                 />
                 
                 {/* Contact Tabs */}
-                <ContactTabs contact={contact} notes={notes} onAddNote={handleAddNote} />
+                <ContactTabs contact={contact} notes={notes} deals={deals} onAddNote={handleAddNote} />
               </div>
 
               {/* Right Column - Sidebar */}
@@ -251,7 +271,7 @@ const ContactDetails = () => {
                 <QuickActionsPanel contact={contact} onAddNote={handleAddNote} />
                 
                 {/* Related Deals Card */}
-                <RelatedDealsCard deals={mockDeals} />
+                <RelatedDealsCard deals={deals} />
                 
                 {/* Recent Activity Card */}
                 <RecentActivityCard activities={mockActivities} />

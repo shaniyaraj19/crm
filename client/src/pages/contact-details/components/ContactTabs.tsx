@@ -6,10 +6,12 @@ import Input from "../../../components/ui/Input";
 const ContactTabs = ({
   contact,
   notes,
+  deals,
   onAddNote,
 }: {
   contact: any;
   notes: any[];
+  deals: any[];
   onAddNote: (note: any) => void;
 }) => {
   const [activeTab, setActiveTab] = useState("activities");
@@ -53,26 +55,26 @@ const ContactTabs = ({
     },
   ];
 
-  const deals = [
-    {
-      id: 1,
-      name: "Enterprise Software License",
-      value: 75000,
-      stage: "proposal",
-      probability: 75,
-      closeDate: "2025-02-15",
-      owner: "John Smith",
-    },
-    {
-      id: 2,
-      name: "Consulting Services",
-      value: 25000,
-      stage: "negotiation",
-      probability: 60,
-      closeDate: "2025-01-30",
-      owner: "Sarah Johnson",
-    },
-  ];
+  // const deals = [
+  //   {
+  //     id: 1,
+  //     name: "Enterprise Software License",
+  //     value: 75000,
+  //     stage: "proposal",
+  //     probability: 75,
+  //     closeDate: "2025-02-15",
+  //     owner: "John Smith",
+  //   },
+  //   {
+  //     id: 2,
+  //     name: "Consulting Services",
+  //     value: 25000,
+  //     stage: "negotiation",
+  //     probability: 60,
+  //     closeDate: "2025-01-30",
+  //     owner: "Sarah Johnson",
+  //   },
+  // ];
 
   const files = [
     {
@@ -193,52 +195,70 @@ const ContactTabs = ({
       case "deals":
         return (
           <div className="space-y-4">
-            {deals.map((deal) => (
-              <div key={deal.id} className="p-4 bg-muted/30 rounded-lg">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-medium text-foreground">{deal.name}</h4>
-                  <span className="text-lg font-semibold text-foreground">
-                    {formatCurrency(deal.value)}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Stage</p>
-                    <span
-                      className={`inline-block px-2 py-1 text-xs rounded-full font-medium capitalize ${
-                        deal.stage === "Onboarding"
-                          ? "bg-blue-100 text-blue-800"
-                          : deal.stage === "Implementation"
-                          ? "bg-amber-100 text-amber-800"
-                          : deal.stage === "Go-Live"
-                          ? "bg-red-100 text-red-800"
-                          : deal.stage === "Success"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {deal.stage}
+            {deals && deals.length > 0 ? (
+              deals.map((deal) => (
+                <div key={deal.id} className="p-4 bg-muted/30 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium text-foreground">{deal.name || deal.title}</h4>
+                    <span className="text-lg font-semibold text-foreground">
+                      {formatCurrency(deal.value)}
                     </span>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground">Probability</p>
-                    <p className="font-medium text-foreground">
-                      {deal.probability}%
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Close Date</p>
-                    <p className="font-medium text-foreground">
-                      {deal.closeDate}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Owner</p>
-                    <p className="font-medium text-foreground">{deal.owner}</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Stage</p>
+                      <span
+                        className={`inline-block px-2 py-1 text-xs rounded-full font-medium capitalize ${
+                          deal.stageId === "Lead" || deal.stageName === "Lead"
+                            ? "bg-red-100 text-red-800"
+                            : deal.stageId === "Qualified" || deal.stageName === "Qualified"
+                            ? "bg-orange-100 text-orange-800"
+                            : deal.stageId === "Proposal" || deal.stageName === "Proposal"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : deal.stageId === "Negotiation" || deal.stageName === "Negotiation"
+                            ? "bg-blue-100 text-blue-800"
+                            : deal.stageId === "Closed Won" || deal.stageName === "Closed Won"
+                            ? "bg-green-100 text-green-800"
+                            : deal.stageId === "Closed Lost" || deal.stageName === "Closed Lost"
+                            ? "bg-gray-100 text-gray-800"
+                            : deal.stageId === "Onboarding" || deal.stageName === "Onboarding"
+                            ? "bg-blue-100 text-blue-800"
+                            : deal.stageId === "Implementation" || deal.stageName === "Implementation"
+                            ? "bg-amber-100 text-amber-800"
+                            : deal.stageId === "Go-Live" || deal.stageName === "Go-Live"
+                            ? "bg-red-100 text-red-800"
+                            : deal.stageId === "Success" || deal.stageName === "Success"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {deal.stageId || deal.stageName || deal.stage}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Probability</p>
+                      <p className="font-medium text-foreground">
+                        {deal.probability}%
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Close Date</p>
+                      <p className="font-medium text-foreground">
+                        {deal.expectedCloseDate ? formatDate(new Date(deal.expectedCloseDate)) : 'Not set'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Owner</p>
+                      <p className="font-medium text-foreground">{deal.assignedTo || deal.owner || 'Unassigned'}</p>
+                    </div>
                   </div>
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No deals found for this contact.</p>
               </div>
-            ))}
+            )}
           </div>
         );
 

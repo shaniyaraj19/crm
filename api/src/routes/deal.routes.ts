@@ -99,6 +99,7 @@ router.get(
   DealController.getDeals
 );
 
+
 /**
  * @swagger
  * /api/v1/deals/{id}:
@@ -446,6 +447,13 @@ router.get(
   validateParams(dealPipelineIdParamSchema),
   authorize(Permission.DEAL_READ),
   DealController.getDealsByStage
+);
+
+
+router.get(
+  '/company/:companyId',
+  authorize(Permission.DEAL_READ),
+  DealController.getCompanyDeals
 );
 
 export default router;

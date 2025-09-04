@@ -75,7 +75,7 @@ class DatabaseSeeder {
 
   async seedUsers() {
     console.log('👥 Seeding users...');
-    const users = [];
+    const users: any[] = [];
 
     // Create admin user for each organization
     for (let i = 0; i < ORGANIZATIONS.length; i++) {
@@ -155,7 +155,7 @@ class DatabaseSeeder {
 
   async seedPipelines() {
     console.log('🔄 Seeding pipelines...');
-    const pipelines = [];
+    const pipelines: any[] = [];
 
     for (let i = 0; i < this.organizationIds.length; i++) {
       const orgId = this.organizationIds[i];
@@ -231,7 +231,7 @@ class DatabaseSeeder {
 
   async seedCompanies() {
     console.log('🏢 Seeding companies...');
-    const companies = [];
+    const companies: any[] = [];
 
     for (let i = 0; i < COMPANIES_DATA.length; i++) {
       const companyData = COMPANIES_DATA[i];
@@ -263,7 +263,7 @@ class DatabaseSeeder {
 
   async seedContacts() {
     console.log('👤 Seeding contacts...');
-    const contacts = [];
+    const contacts: any[] = [];
 
     // Create 2-4 contacts per company
     for (let i = 0; i < this.companyIds.length; i++) {
@@ -305,7 +305,7 @@ class DatabaseSeeder {
 
   async seedDeals() {
     console.log('💰 Seeding deals...');
-    const deals = [];
+    const deals: any[] = [];
 
     // Create deals for random contacts
     const dealCount = Math.floor(this.contactIds.length * 0.7); // 70% of contacts have deals
@@ -336,7 +336,7 @@ class DatabaseSeeder {
         probability: randomStage?.probability || 25,
         expectedCloseDate: new Date(Date.now() + Math.floor(Math.random() * 90) * 24 * 60 * 60 * 1000),
         pipelineId,
-        stageId: randomStage?._id?.toString(),
+        stageId: randomStage?.name,
         contactId,
         companyId,
         assignedTo: userId,
@@ -364,7 +364,7 @@ class DatabaseSeeder {
 
   async seedActivities() {
     console.log('📅 Seeding activities...');
-    const activities = [];
+    const activities: any[] = [];
 
     // Create activities for deals and contacts
     for (let i = 0; i < this.dealIds.length; i++) {

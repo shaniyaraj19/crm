@@ -2,6 +2,7 @@ import api from "./api";
 
 export interface Note {
     id?: string;
+    title?: string;
     content: string;
     type: string;
     companyId: string;
@@ -14,9 +15,20 @@ export interface Note {
 
 export const createNote = async (note: Note) => {
     try {
-        
-        const response = await api.post('/notes', note);
-        return response.data;
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+        const activityData = {
+            type: 'note',
+            title: note.title || 'Untitled Note',
+            description: note.content,
+            companyId: note.companyId,
+            priority: 'medium',
+            userId: currentUser._id,
+            customFields: {
+                noteType: note.type
+            }
+        };
+        const response = await api.post('/activities', activityData);
+        return response;
     } catch (error) {
         console.error(error);
         throw error;
@@ -25,8 +37,8 @@ export const createNote = async (note: Note) => {
 
 export const getNotes = async (companyId: string) => {
     try {
-        const response = await api.get(`/notes/company/${companyId}`);
-        return response.data;
+        const response = await api.get(`/activities/company/${companyId}?type=note`);
+        return response;
     } catch (error) {
         console.error(error);
         throw error;
@@ -45,8 +57,17 @@ export const getNoteById = async (noteId: string) => {
 
 export const updateNote = async (noteId: string, note: Note) => {
     try {
-        const response = await api.put(`/notes/${noteId}`, note);
-        return response.data;
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+        const activityData = {
+            title: note.title || 'Untitled Note',
+            description: note.content,
+            userId: currentUser._id,
+            customFields: {
+                noteType: note.type
+            }
+        };
+        const response = await api.put(`/activities/${noteId}`, activityData);
+        return response;
     } catch (error) {
         console.error(error);
         throw error;
@@ -55,12 +76,10 @@ export const updateNote = async (noteId: string, note: Note) => {
 
 export const deleteNote = async (noteId: string) => {
     try {
-        
-        const response = await api.delete(`/notes/${noteId}`);
-        
-        return response.data;
+        const response = await api.delete(`/activities/${noteId}`);
+        return response;
     } catch (error) {
-       
+        console.error(error);
         throw error;
     }
 };

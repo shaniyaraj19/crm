@@ -14,7 +14,8 @@ export class CompanyController {
    */
   static async getCompanies(req: Request, res: Response, next: NextFunction) {
     try {
-      const { organizationId } = req.user!;
+      // Check if user has organizationId, if not, use userId as organizationId (for single-user setups)
+      const organizationId = req.user?.organizationId || req.user?.userId;
       const {
         page = PAGINATION.DEFAULT_PAGE,
         limit = PAGINATION.DEFAULT_LIMIT,
@@ -117,7 +118,8 @@ export class CompanyController {
   static async getCompanyById(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const { organizationId } = req.user!;
+      // Check if user has organizationId, if not, use userId as organizationId (for single-user setups)
+      const organizationId = req.user?.organizationId || req.user?.userId;
 
       const company = await Company.findOne({ _id: id, organizationId })
         .populate('parentCompanyId', 'name industry website')
@@ -163,7 +165,9 @@ export class CompanyController {
    */
   static async createCompany(req: Request, res: Response, next: NextFunction) {
     try {
-      const { organizationId, userId } = req.user!;
+      const { userId } = req.user!;
+      // Check if user has organizationId, if not, use userId as organizationId (for single-user setups)
+      const organizationId = req.user?.organizationId || req.user?.userId;
       const companyData = req.body;
 
       // Check if company name already exists
@@ -219,7 +223,9 @@ export class CompanyController {
   static async updateCompany(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const { organizationId, userId } = req.user!;
+      const { userId } = req.user!;
+      // Check if user has organizationId, if not, use userId as organizationId (for single-user setups)
+      const organizationId = req.user?.organizationId || req.user?.userId;
       const updateData = req.body;
 
       const company = await Company.findOne({ _id: id, organizationId });
@@ -299,7 +305,9 @@ export class CompanyController {
   static async deleteCompany(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const { organizationId, userId } = req.user!;
+      const { userId } = req.user!;
+      // Check if user has organizationId, if not, use userId as organizationId (for single-user setups)
+      const organizationId = req.user?.organizationId || req.user?.userId;
 
       const company = await Company.findOne({ _id: id, organizationId });
       if (!company) {
@@ -340,7 +348,8 @@ export class CompanyController {
    */
   static async getCompanyAnalytics(req: Request, res: Response, next: NextFunction) {
     try {
-      const { organizationId } = req.user!;
+      // Check if user has organizationId, if not, use userId as organizationId (for single-user setups)
+      const organizationId = req.user?.organizationId || req.user?.userId;
       const { period = '30d' } = req.query;
 
       // Calculate date range

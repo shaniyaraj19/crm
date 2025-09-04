@@ -16,8 +16,25 @@ export interface Schedule {
 
 export const createSchedule = async (schedule: Schedule) => {
     try {
-        const response = await api.post('/schedules', schedule);
-        return response.data;
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+        const activityData = {
+            type: 'meeting',
+            title: schedule.meetingTitle,
+            description: schedule.notes || `Meeting with ${schedule.attendees}`,
+            scheduledAt: new Date(`${schedule.date}T${schedule.time}`).toISOString(),
+            duration: schedule.duration,
+            status: schedule.status || 'scheduled',
+            companyId: schedule.companyId,
+            userId: currentUser._id,
+            customFields: {
+                attendees: schedule.attendees,
+                meetingDate: schedule.date,
+                meetingTime: schedule.time,
+                meetingTitle: schedule.meetingTitle
+            }
+        };
+        const response = await api.post('/activities', activityData);
+        return response;
     } catch (error) {
         console.error(error);
         throw error;
@@ -26,8 +43,8 @@ export const createSchedule = async (schedule: Schedule) => {
 
 export const getSchedules = async (companyId: string) => {
     try {
-        const response = await api.get(`/schedules/company/${companyId}`);
-        return response.data;
+        const response = await api.get(`/activities/company/${companyId}?type=meeting`);
+        return response;
     } catch (error) {
         console.error(error);
         throw error;
@@ -46,8 +63,23 @@ export const getScheduleById = async (scheduleId: string) => {
 
 export const updateSchedule = async (scheduleId: string, schedule: Partial<Schedule>) => {
     try {
-        const response = await api.put(`/schedules/${scheduleId}`, schedule);
-        return response.data;
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+        const activityData = {
+            title: schedule.meetingTitle,
+            description: schedule.notes || `Meeting with ${schedule.attendees}`,
+            scheduledAt: schedule.date && schedule.time ? new Date(`${schedule.date}T${schedule.time}`).toISOString() : undefined,
+            duration: schedule.duration,
+            status: schedule.status,
+            userId: currentUser._id,
+            customFields: {
+                attendees: schedule.attendees,
+                meetingDate: schedule.date,
+                meetingTime: schedule.time,
+                meetingTitle: schedule.meetingTitle
+            }
+        };
+        const response = await api.put(`/activities/${scheduleId}`, activityData);
+        return response;
     } catch (error) {
         console.error(error);
         throw error;
@@ -56,7 +88,7 @@ export const updateSchedule = async (scheduleId: string, schedule: Partial<Sched
 
 export const deleteSchedule = async (scheduleId: string) => {
     try {
-        const response = await api.delete(`/schedules/${scheduleId}`);
+        const response = await api.delete(`/activities/${scheduleId}`);
         return response;
     } catch (error) {
         console.error(error);

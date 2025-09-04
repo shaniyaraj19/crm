@@ -14,7 +14,9 @@ export class DealController {
    */
   static async getDeals(req: Request, res: Response, next: NextFunction) {
     try {
-      const { organizationId, userId, role } = req.user!;
+      const { userId, role } = req.user!;
+      // Check if user has organizationId, if not, use userId as organizationId (for single-user setups)
+      const organizationId = req.user?.organizationId || req.user?.userId;
       const {
         page = PAGINATION.DEFAULT_PAGE,
         limit = PAGINATION.DEFAULT_LIMIT,
@@ -115,13 +117,32 @@ export class DealController {
     }
   }
 
+  // get sepcified company deals
+  static async getCompanyDeals(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { companyId } = req.params;
+      // Check if user has organizationId, if not, use userId as organizationId (for single-user setups)
+      const organizationId = req.user?.organizationId || req.user?.userId;
+      const deals = await Deal.find({ companyId, organizationId }).populate('stageId', 'name')
+      const response: ApiResponse = {
+        success: true,
+        data: { deals },
+      };
+      res.status(HTTP_STATUS.OK).json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   /**
    * Get deal by ID
    */
   static async getDealById(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const { organizationId, userId, role } = req.user!;
+      const { userId, role } = req.user!;
+      // Check if user has organizationId, if not, use userId as organizationId (for single-user setups)
+      const organizationId = req.user?.organizationId || req.user?.userId;
 
       const query: any = { _id: id, organizationId };
       
@@ -159,7 +180,9 @@ export class DealController {
    */
   static async createDeal(req: Request, res: Response, next: NextFunction) {
     try {
-      const { organizationId, userId } = req.user!;
+      const { userId } = req.user!;
+      // Check if user has organizationId, if not, use userId as organizationId (for single-user setups)
+      const organizationId = req.user?.organizationId || req.user?.userId;
       const dealData = req.body;
 
       // Validate pipeline and stage
@@ -171,7 +194,7 @@ export class DealController {
         throw new NotFoundError('Pipeline');
       }
 
-      const stage = pipeline.stages.find(s => s._id?.toString() === dealData.stageId);
+      const stage = pipeline.stages.find(s => s.name === dealData.stageId);
       if (!stage) {
         throw new NotFoundError('Stage');
       }
@@ -228,7 +251,9 @@ export class DealController {
   static async updateDeal(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const { organizationId, userId, role } = req.user!;
+      const { userId, role } = req.user!;
+      // Check if user has organizationId, if not, use userId as organizationId (for single-user setups)
+      const organizationId = req.user?.organizationId || req.user?.userId;
       const updateData = req.body;
 
       const query: any = { _id: id, organizationId };
@@ -250,7 +275,7 @@ export class DealController {
           throw new NotFoundError('Pipeline');
         }
 
-        const newStage = pipeline.stages.find(s => s._id?.toString() === updateData.stageId);
+        const newStage = pipeline.stages.find(s => s.name === updateData.stageId);
         if (!newStage) {
           throw new NotFoundError('Stage');
         }
@@ -317,7 +342,9 @@ export class DealController {
   static async deleteDeal(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const { organizationId, userId, role } = req.user!;
+      const { userId, role } = req.user!;
+      // Check if user has organizationId, if not, use userId as organizationId (for single-user setups)
+      const organizationId = req.user?.organizationId || req.user?.userId;
 
       const query: any = { _id: id, organizationId };
       
@@ -362,7 +389,9 @@ export class DealController {
   static async moveDealToStage(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const { organizationId, userId, role } = req.user!;
+      const { userId, role } = req.user!;
+      // Check if user has organizationId, if not, use userId as organizationId (for single-user setups)
+      const organizationId = req.user?.organizationId || req.user?.userId;
       const { stageId, reason } = req.body;
 
       const query: any = { _id: id, organizationId };
@@ -387,7 +416,7 @@ export class DealController {
         throw new NotFoundError('Pipeline');
       }
 
-      const newStage = pipeline.stages.find(s => s._id?.toString() === stageId);
+      const newStage = pipeline.stages.find(s => s.name === stageId);
       if (!newStage) {
         throw new NotFoundError('Stage');
       }
@@ -434,7 +463,9 @@ export class DealController {
   static async addNote(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const { organizationId, userId, role } = req.user!;
+      const { userId, role } = req.user!;
+      // Check if user has organizationId, if not, use userId as organizationId (for single-user setups)
+      const organizationId = req.user?.organizationId || req.user?.userId;
       const { content, isPrivate = false } = req.body;
 
       const query: any = { _id: id, organizationId };
@@ -483,7 +514,9 @@ export class DealController {
    */
   static async getDealAnalytics(req: Request, res: Response, next: NextFunction) {
     try {
-      const { organizationId, userId, role } = req.user!;
+      const { userId, role } = req.user!;
+      // Check if user has organizationId, if not, use userId as organizationId (for single-user setups)
+      const organizationId = req.user?.organizationId || req.user?.userId;
       const { period = '30d', pipelineId } = req.query;
 
       // Calculate date range
@@ -574,7 +607,9 @@ export class DealController {
   static async getDealsByStage(req: Request, res: Response, next: NextFunction) {
     try {
       const { pipelineId } = req.params;
-      const { organizationId, userId, role } = req.user!;
+      const { userId, role } = req.user!;
+      // Check if user has organizationId, if not, use userId as organizationId (for single-user setups)
+      const organizationId = req.user?.organizationId || req.user?.userId;
 
       // Validate pipeline
       const pipeline = await Pipeline.findOne({ _id: pipelineId, organizationId });
